@@ -2,13 +2,13 @@
   "name": "spectrum",
   "private": true,
   "version": "0.1.0",
-  "description": "Spectrum — AI Code Editor with free model support (Gemma, etc.)",
+  "description": "Spectrum \u2014 AI Code Editor with free model support (Gemma, etc.)",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:gh": "GITHUB_PAGES=true tsc -b && GITHUB_PAGES=true vite build",
+    "build:gh": "cross-env GITHUB_PAGES=true tsc -b && cross-env GITHUB_PAGES=true vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
@@ -37,7 +37,8 @@
     "electron": "^34.0.0",
     "concurrently": "^9.1.2",
     "wait-on": "^8.0.2",
-    "gh-pages": "^6.3.0"
+    "gh-pages": "^6.3.0",
+    "cross-env": "^7.0.3"
   },
   "keywords": [
     "ai",
