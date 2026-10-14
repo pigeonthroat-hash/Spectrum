@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent: #3fb950;
+  --accent-red: #f85149;
+  --accent-blue: #58a6ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* Monaco diff green/red overrides */
+.monaco-editor .line-insert,
+.monaco-diff-editor .line-insert {
+  background-color: rgba(63, 185, 80, 0.15) !important;
+}
+.monaco-editor .char-insert,
+.monaco-diff-editor .char-insert {
+  background-color: rgba(63, 185, 80, 0.35) !important;
+}
+.monaco-editor .line-delete,
+.monaco-diff-editor .line-delete {
+  background-color: rgba(248, 81, 73, 0.15) !important;
+}
+.monaco-editor .char-delete,
+.monaco-diff-editor .char-delete {
+  background-color: rgba(248, 81, 73, 0.35) !important;
+}
