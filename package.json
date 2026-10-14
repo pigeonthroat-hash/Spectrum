@@ -2,7 +2,7 @@
   "name": "spectrum",
   "private": true,
   "version": "0.1.0",
-  "description": "Spectrum \u2014 AI Code Editor with free model support (Gemma, etc.)", // why does it say 2014?
+  "description": "Spectrum \u2014 AI Code Editor with free model support (Gemma, etc.)",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
