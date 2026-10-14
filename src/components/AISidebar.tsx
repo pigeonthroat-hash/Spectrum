@@ -23,8 +23,6 @@ export function AISidebar() {
     mode,
     setMode,
     pendingDiffs,
-    acceptDiff,
-    rejectDiff,
     acceptAllDiffs,
     rejectAllDiffs,
     activeTabPath,
