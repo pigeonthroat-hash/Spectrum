@@ -2,15 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { Send, Bot, User, Loader2, Sparkles, Check, X, RotateCcw } from 'lucide-react'
 import { cn } from '../lib/utils'
-
-const MODELS = [
-  { id: 'ollama/gemma2:9b', label: 'Gemma 2 9B (local)' },
-  { id: 'ollama/gemma2:27b', label: 'Gemma 2 27B (local)' },
-  { id: 'ollama/qwen2.5-coder:7b', label: 'Qwen2.5-Coder 7B' },
-  { id: 'ollama/deepseek-coder-v2:16b', label: 'DeepSeek Coder V2' },
-  { id: 'groq/llama-3.3-70b', label: 'Llama 3.3 70B (Groq)' },
-  { id: 'openrouter/google/gemma-2-9b-it', label: 'Gemma 2 9B (OpenRouter)' },
-]
+import { ModelPicker } from './ModelPicker'
 
 export function AISidebar() {
   const {
@@ -103,17 +95,7 @@ export function AISidebar() {
             </button>
           ))}
         </div>
-        <select
-          value={selectedModel}
-          onChange={(e) => setModel(e.target.value)}
-          className="bg-[#161b22] border border-[#30363d] text-xs text-[#e6edf3] rounded px-2 py-1 max-w-[160px] outline-none focus:border-[#58a6ff]"
-        >
-          {MODELS.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        <ModelPicker value={selectedModel} onChange={setModel} />
       </div>
 
       {/* Pending diffs bar */}
