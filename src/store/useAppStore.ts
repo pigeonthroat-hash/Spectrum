@@ -80,7 +80,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   messages: [],
   isGenerating: false,
-  selectedModel: 'ollama/gemma2:9b',
+  selectedModel: 'ollama/gemma4:e4b',
   mode: 'agent',
   pendingDiffs: [],
 
