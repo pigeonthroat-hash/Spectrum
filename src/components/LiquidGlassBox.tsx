@@ -35,11 +35,11 @@ export function LiquidGlassBox({ children }: { children: ReactNode }) {
     let cancelled = false
 
     LiquidGlass.init({ root, glassElements: [glass] })
-      .then((i) => {
+      .then((i: Instance) => {
         if (cancelled) i.destroy()
         else instance = i
       })
-      .catch((err) => console.warn('Liquid glass failed to start, showing plain box', err))
+      .catch((err: unknown) => console.warn('Liquid glass failed to start, showing plain box', err))
 
     return () => {
       cancelled = true
