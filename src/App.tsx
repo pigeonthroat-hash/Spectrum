@@ -3,10 +3,18 @@ import { FileExplorer } from './components/FileExplorer'
 import { SettingsDialog } from './components/SettingsDialog'
 import logo from './assets/logo.png'
 import { AccountButton } from './components/AccountButton'
+import { SaveController } from './components/SaveController'
 import { CodeEditor } from './components/CodeEditor'
 import { AISidebar } from './components/AISidebar'
 import { useAppStore } from './store/useAppStore'
 import { PanelLeft, PanelRight, Settings } from 'lucide-react'
+
+const SAVE_LABEL: Record<string, string> = {
+  idle: 'Ready',
+  saving: 'Saving...',
+  saved: 'Saved to cloud',
+  error: 'Save failed',
+}
 
 export default function App() {
   const {
@@ -18,6 +26,7 @@ export default function App() {
     toggleAI,
   } = useAppStore()
   const [showSettings, setShowSettings] = useState(false)
+  const saveStatus = useAppStore((s) => s.saveStatus)
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
@@ -77,12 +86,13 @@ export default function App() {
         )}
       </div>
 
+      <SaveController />
       <SettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Status bar */}
       <footer className="h-6 flex items-center justify-between px-3 border-t border-[#30363d] bg-[#161b22] text-[11px] text-[#8b949e] shrink-0">
         <div className="flex items-center gap-3">
-          <span>Ready</span>
+          <span>{SAVE_LABEL[saveStatus]}</span>
           <span className="text-[#3fb950]">● Free models enabled</span>
         </div>
         <div className="flex items-center gap-3">

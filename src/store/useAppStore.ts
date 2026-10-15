@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 
 export type ChatStyle = 'classic' | 'liquid'
 export type AgentMode = 'agent' | 'plan' | 'debug' | 'ask'
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 export interface FileNode {
   name: string
@@ -55,6 +56,11 @@ interface AppState {
   showAI: boolean
   chatStyle: ChatStyle
 
+  // Cloud project
+  projectId: string | null
+  projectName: string | null
+  saveStatus: SaveStatus
+
   // Actions
   setRootPath: (path: string) => void
   setFileTree: (tree: FileNode[]) => void
@@ -78,6 +84,9 @@ interface AppState {
   toggleExplorer: () => void
   toggleAI: () => void
   setChatStyle: (style: ChatStyle) => void
+  setProject: (id: string | null, name: string | null) => void
+  markSaved: (path: string, content: string) => void
+  setSaveStatus: (status: SaveStatus) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -99,6 +108,10 @@ export const useAppStore = create<AppState>()(
       showExplorer: true,
       showAI: true,
       chatStyle: 'classic',
+
+      projectId: null,
+      projectName: null,
+      saveStatus: 'idle',
 
       setRootPath: (path) => set({ rootPath: path }),
       setFileTree: (tree) => set({ fileTree: tree }),
@@ -192,6 +205,28 @@ export const useAppStore = create<AppState>()(
       toggleExplorer: () => set({ showExplorer: !get().showExplorer }),
       toggleAI: () => set({ showAI: !get().showAI }),
       setChatStyle: (style) => set({ chatStyle: style }),
+
+      // Switching projects clears open tabs and the tree
+      setProject: (id, name) =>
+        set({
+          projectId: id,
+          projectName: name,
+          openTabs: [],
+          activeTabPath: null,
+          fileTree: [],
+          pendingDiffs: [],
+          saveStatus: 'idle',
+        }),
+
+      // Clears "unsaved" only if nothing was typed while the save was running
+      markSaved: (path, content) =>
+        set({
+          openTabs: get().openTabs.map((t) =>
+            t.path === path ? { ...t, isDirty: t.content !== content } : t
+          ),
+        }),
+
+      setSaveStatus: (status) => set({ saveStatus: status }),
     }),
     {
       name: 'spectrum-settings',
