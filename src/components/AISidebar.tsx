@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { Bot, User, Loader2, Sparkles, Check, X } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { ModelPicker } from './ModelPicker'
 import { ChatInput } from './ChatInput'
 import { streamOllamaChat, type ChatMessage } from '../lib/providers/ollama'
 
@@ -28,18 +27,20 @@ export function AISidebar() {
   } = useAppStore()
 
   const [input, setInput] = useState('')
+  const [useFile, setUseFile] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const activeFile = openTabs.find((t) => t.path === activeTabPath) ?? null
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   const buildSystemPrompt = (): ChatMessage => {
-    const active = openTabs.find((t) => t.path === activeTabPath)
     let content =
       'You are Spectrum, a coding assistant inside a code editor. Be concise and practical. Use code blocks for code.'
-    if (active) {
-      content += `\n\nThe user has this file open: ${active.name}\n\`\`\`\n${active.content.slice(0, MAX_CONTEXT_CHARS)}\n\`\`\``
+    if (useFile && activeFile) {
+      content += `\n\nThe user has this file open: ${activeFile.name}\n\`\`\`\n${activeFile.content.slice(0, MAX_CONTEXT_CHARS)}\n\`\`\``
     }
     return { role: 'system', content }
   }
@@ -49,7 +50,6 @@ export function AISidebar() {
     if (!text || isGenerating) return
     setInput('')
 
-    // History before this message, then the new user message
     const history: ChatMessage[] = messages
       .filter((m) => m.content)
       .map((m) => ({ role: m.role, content: m.content }))
@@ -78,8 +78,8 @@ export function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117] border-l border-[#30363d]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#30363d] shrink-0">
+      {/* Header: mode tabs */}
+      <div className="flex items-center px-3 py-2 border-b border-[#30363d] shrink-0">
         <div className="flex gap-1">
           {(['chat', 'agent', 'composer'] as const).map((m) => (
             <button
@@ -96,7 +96,6 @@ export function AISidebar() {
             </button>
           ))}
         </div>
-        <ModelPicker value={selectedModel} onChange={setModel} />
       </div>
 
       {/* Pending diffs bar */}
@@ -139,10 +138,7 @@ export function AISidebar() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={cn(
-              'flex gap-2.5 text-sm',
-              msg.role === 'user' ? 'justify-end' : 'justify-start'
-            )}
+            className={cn('flex gap-2.5 text-sm', msg.role === 'user' ? 'justify-end' : 'justify-start')}
           >
             {msg.role === 'assistant' && (
               <div className="w-6 h-6 rounded-full bg-[#238636] flex items-center justify-center shrink-0 mt-0.5">
@@ -177,6 +173,11 @@ export function AISidebar() {
         disabled={isGenerating}
         mode={mode}
         style={chatStyle}
+        fileName={activeFile?.name ?? null}
+        useFile={useFile}
+        onToggleFile={() => setUseFile((v) => !v)}
+        selectedModel={selectedModel}
+        onModelChange={setModel}
       />
     </div>
   )
