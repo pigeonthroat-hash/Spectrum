@@ -1,11 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore } from '../store/useAppStore'
-import { Bot, User, Loader2, Sparkles, Check, X } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { useAppStore, type AgentMode } from '../store/useAppStore'
+import { Loader2, Sparkles, Check, X } from 'lucide-react'
 import { ChatInput } from './ChatInput'
 import { streamOllamaChat, type ChatMessage } from '../lib/providers/ollama'
 
 const MAX_CONTEXT_CHARS = 12000
+
+const BASE_PROMPT =
+  'You are Spectrum, a coding assistant inside a code editor. Be concise and practical. Use code blocks for code.'
+
+const MODE_PROMPTS: Record<AgentMode, string> = {
+  agent: 'Help the user complete the task. Show the code changes you would make.',
+  plan: 'Break the task into a short numbered plan before writing any code.',
+  debug: 'Find the most likely root cause of the problem, explain why, then suggest a minimal fix.',
+  ask: 'Answer the question clearly. Do not propose file edits.',
+}
 
 export function AISidebar() {
   const {
@@ -37,8 +46,7 @@ export function AISidebar() {
   }, [messages])
 
   const buildSystemPrompt = (): ChatMessage => {
-    let content =
-      'You are Spectrum, a coding assistant inside a code editor. Be concise and practical. Use code blocks for code.'
+    let content = `${BASE_PROMPT}\n\nMode: ${MODE_PROMPTS[mode]}`
     if (useFile && activeFile) {
       content += `\n\nThe user has this file open: ${activeFile.name}\n\`\`\`\n${activeFile.content.slice(0, MAX_CONTEXT_CHARS)}\n\`\`\``
     }
@@ -78,27 +86,7 @@ export function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117] border-l border-[#30363d]">
-      {/* Header: mode tabs */}
-      <div className="flex items-center px-3 py-2 border-b border-[#30363d] shrink-0">
-        <div className="flex gap-1">
-          {(['chat', 'agent', 'composer'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={cn(
-                'px-2.5 py-1 text-xs font-medium rounded capitalize transition-colors',
-                mode === m
-                  ? 'bg-[#21262d] text-white'
-                  : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
-              )}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Pending diffs bar */}
+      {/* Pending changes bar */}
       {pendingDiffs.length > 0 && (
         <div className="px-3 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between gap-2 shrink-0">
           <span className="text-xs text-[#8b949e]">
@@ -109,13 +97,13 @@ export function AISidebar() {
               onClick={acceptAllDiffs}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded"
             >
-              <Check size={12} /> Accept all
+              <Check size={12} /> Keep All
             </button>
             <button
               onClick={rejectAllDiffs}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
             >
-              <X size={12} /> Reject
+              <X size={12} /> Undo All
             </button>
           </div>
         </div>
@@ -125,43 +113,27 @@ export function AISidebar() {
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
-            <Sparkles size={32} className="text-[#3fb950] opacity-80" />
-            <div>
-              <p className="text-sm font-medium text-[#e6edf3]">Spectrum Agent</p>
-              <p className="text-xs mt-1 max-w-[220px]">
-                Ask anything. Local models run through Ollama on your machine.
-              </p>
-            </div>
+            <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
+            <p className="text-xs max-w-[220px]">
+              Ask a question, plan a change, or debug an error. Local models run through Ollama on your machine.
+            </p>
           </div>
         )}
 
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn('flex gap-2.5 text-sm', msg.role === 'user' ? 'justify-end' : 'justify-start')}
-          >
-            {msg.role === 'assistant' && (
-              <div className="w-6 h-6 rounded-full bg-[#238636] flex items-center justify-center shrink-0 mt-0.5">
-                <Bot size={14} className="text-white" />
-              </div>
-            )}
+        {messages.map((msg) =>
+          msg.role === 'user' ? (
             <div
-              className={cn(
-                'rounded-lg px-3 py-2 max-w-[85%] whitespace-pre-wrap leading-relaxed',
-                msg.role === 'user'
-                  ? 'bg-[#238636] text-white'
-                  : 'bg-[#161b22] text-[#e6edf3] border border-[#30363d]'
-              )}
+              key={msg.id}
+              className="rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
             >
+              {msg.content}
+            </div>
+          ) : (
+            <div key={msg.id} className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
               {msg.content || <Loader2 size={14} className="animate-spin text-[#8b949e]" />}
             </div>
-            {msg.role === 'user' && (
-              <div className="w-6 h-6 rounded-full bg-[#30363d] flex items-center justify-center shrink-0 mt-0.5">
-                <User size={14} className="text-[#e6edf3]" />
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -172,6 +144,7 @@ export function AISidebar() {
         onSend={handleSend}
         disabled={isGenerating}
         mode={mode}
+        onModeChange={setMode}
         style={chatStyle}
         fileName={activeFile?.name ?? null}
         useFile={useFile}
