@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type ChatStyle = 'classic' | 'liquid'
+export type AgentMode = 'agent' | 'plan' | 'debug' | 'ask'
 
 export interface FileNode {
   name: string
@@ -44,7 +45,7 @@ interface AppState {
   messages: ChatMessage[]
   isGenerating: boolean
   selectedModel: string
-  mode: 'chat' | 'agent' | 'composer'
+  mode: AgentMode
   pendingDiffs: DiffHunk[]
 
   // UI
@@ -66,7 +67,7 @@ interface AppState {
   clearMessages: () => void
   setGenerating: (v: boolean) => void
   setModel: (model: string) => void
-  setMode: (mode: 'chat' | 'agent' | 'composer') => void
+  setMode: (mode: AgentMode) => void
   setPendingDiffs: (diffs: DiffHunk[]) => void
   acceptDiff: (path: string) => void
   rejectDiff: (path: string) => void
