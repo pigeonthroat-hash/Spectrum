@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
-// Loaded from the CDN (as the library's README shows), so no npm install is needed.
+// Official CDN build from the liquidglass README (no npm install needed)
 const LIQUID_GLASS_URL = 'https://cdn.jsdelivr.net/npm/@ybouane/liquidglass/dist/index.js'
 
 interface GlassInstance {
@@ -13,23 +13,23 @@ interface LiquidGlassModule {
   }
 }
 
+// Per-element options from the README "Available Options" table
 const GLASS_CONFIG = {
-  blurAmount: 0.15,
-  refraction: 0.6,
-  chromAberration: 0.05,
-  edgeHighlight: 0.12,
-  specular: 0.3,
-  fresnel: 0.8,
-  cornerRadius: 18,
-  zRadius: 14,
-  shadowOpacity: 0.35,
-  shadowSpread: 8,
+  blurAmount: 0.1,
+  refraction: 0.7,
+  chromAberration: 0.08,
+  edgeHighlight: 0.15,
+  specular: 0.4,
+  fresnel: 1,
+  cornerRadius: 22,
+  zRadius: 18,
+  shadowOpacity: 0.3,
+  shadowSpread: 10,
   shadowOffsetY: 2,
-  tintStrength: 0.2,
-  brightness: -0.05,
+  tintStrength: 0.1,
+  brightness: 0,
 }
 
-// Load the library once and reuse it for every chat box
 let libPromise: Promise<LiquidGlassModule> | null = null
 const loadLiquidGlass = (): Promise<LiquidGlassModule> => {
   if (!libPromise) {
@@ -38,9 +38,10 @@ const loadLiquidGlass = (): Promise<LiquidGlassModule> => {
   return libPromise
 }
 
-// Wraps children in a liquid glass panel.
-// The glass element must be a direct child of the root, and the root needs a
-// background sibling for the glass to refract.
+// Structure required by the library:
+// - the glass element is a DIRECT child of the root
+// - the root's own background is invisible to the shader, so the colored
+//   background lives in a sibling element inside the root
 export function LiquidGlassBox({ children }: { children: ReactNode }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const glassRef = useRef<HTMLDivElement>(null)
@@ -68,20 +69,22 @@ export function LiquidGlassBox({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div ref={rootRef} className="relative p-2 rounded-2xl">
-      <div
-        aria-hidden
-        className="absolute inset-0 rounded-2xl"
-        style={{
-          background: 'linear-gradient(135deg, #238636 0%, #1f6feb 50%, #8957e5 100%)',
-          opacity: 0.45,
-        }}
-      />
-      <div
-        ref={glassRef}
-        data-config={JSON.stringify(GLASS_CONFIG)}
-        className="liquid-glass relative p-2.5 rounded-[18px]"
-      >
+    <div ref={rootRef} className="relative p-2">
+      <div aria-hidden className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none bg-[#0d1117]">
+        <div
+          className="absolute -left-8 -top-8 w-44 h-44 rounded-full"
+          style={{ background: 'radial-gradient(circle, #3fb950 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute -right-10 top-6 w-48 h-48 rounded-full"
+          style={{ background: 'radial-gradient(circle, #58a6ff 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute left-1/3 -bottom-10 w-40 h-40 rounded-full"
+          style={{ background: 'radial-gradient(circle, #d2a8ff 0%, transparent 70%)' }}
+        />
+      </div>
+      <div ref={glassRef} data-config={JSON.stringify(GLASS_CONFIG)} className="liquid-glass relative p-2.5">
         {children}
       </div>
     </div>
