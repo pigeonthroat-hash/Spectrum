@@ -59,3 +59,11 @@ html, body, #root {
 .monaco-diff-editor .char-delete {
   background-color: rgba(248, 81, 73, 0.35) !important;
 }
+
+/* Liquid glass chat box: keep the injected WebGL canvas from blocking clicks */
+.liquid-glass > canvas {
+  pointer-events: none;
+}
+.liquid-glass textarea {
+  background: transparent;
+}
