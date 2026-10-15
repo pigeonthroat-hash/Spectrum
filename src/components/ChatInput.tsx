@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { AtSign, File, Plus, Send, X } from 'lucide-react'
 import { LiquidGlassBox } from './LiquidGlassBox'
 import { ModelPicker } from './ModelPicker'
@@ -35,6 +35,14 @@ export function ChatInput({
   const isLiquid = style === 'liquid'
   const showFile = useFile && fileName !== null
 
+  // Start as one line and grow with the text, up to a cap
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [value])
+
   const placeholder =
     mode === 'chat'
       ? 'Ask about the code (Enter to send)'
@@ -55,7 +63,7 @@ export function ChatInput({
   }
 
   const content = (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {/* Top row: attach + current file chip */}
       <div className="flex items-center gap-1.5 min-h-[24px]">
         <button
@@ -85,8 +93,8 @@ export function ChatInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
-        rows={3}
-        className="w-full bg-transparent text-sm text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none"
+        rows={1}
+        className="w-full bg-transparent text-sm leading-5 text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none"
       />
 
       {/* Bottom row: model, mention, context, send */}
@@ -115,11 +123,11 @@ export function ChatInput({
   )
 
   return (
-    <div className="p-3 border-t border-[#30363d] shrink-0">
+    <div className="p-2 border-t border-[#30363d] shrink-0">
       {isLiquid ? (
         <LiquidGlassBox>{content}</LiquidGlassBox>
       ) : (
-        <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-2.5">{content}</div>
+        <div className="rounded-xl border border-[#30363d] bg-[#161b22] px-2.5 py-2">{content}</div>
       )}
     </div>
   )
