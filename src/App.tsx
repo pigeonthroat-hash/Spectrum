@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { FileExplorer } from './components/FileExplorer'
+import { SettingsDialog } from './components/SettingsDialog'
 import { CodeEditor } from './components/CodeEditor'
 import { AISidebar } from './components/AISidebar'
 import { useAppStore } from './store/useAppStore'
@@ -13,6 +15,7 @@ export default function App() {
     toggleExplorer,
     toggleAI,
   } = useAppStore()
+  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
@@ -41,7 +44,11 @@ export default function App() {
           >
             <PanelRight size={16} />
           </button>
-          <button className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
+            title="Settings"
+          >
             <Settings size={16} />
           </button>
         </div>
@@ -65,6 +72,8 @@ export default function App() {
           </div>
         )}
       </div>
+
+      <SettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Status bar */}
       <footer className="h-6 flex items-center justify-between px-3 border-t border-[#30363d] bg-[#161b22] text-[11px] text-[#8b949e] shrink-0">
