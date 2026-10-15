@@ -1,5 +1,17 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { LiquidGlass } from '@ybouane/liquidglass'
+
+// Loaded from the CDN (as the library's README shows), so no npm install is needed.
+const LIQUID_GLASS_URL = 'https://cdn.jsdelivr.net/npm/@ybouane/liquidglass/dist/index.js'
+
+interface GlassInstance {
+  destroy: () => void
+}
+
+interface LiquidGlassModule {
+  LiquidGlass: {
+    init: (opts: { root: HTMLElement; glassElements: HTMLElement[] }) => Promise<GlassInstance>
+  }
+}
 
 const GLASS_CONFIG = {
   blurAmount: 0.15,
@@ -17,11 +29,18 @@ const GLASS_CONFIG = {
   brightness: -0.05,
 }
 
-type Instance = Awaited<ReturnType<typeof LiquidGlass.init>>
+// Load the library once and reuse it for every chat box
+let libPromise: Promise<LiquidGlassModule> | null = null
+const loadLiquidGlass = (): Promise<LiquidGlassModule> => {
+  if (!libPromise) {
+    libPromise = import(/* @vite-ignore */ LIQUID_GLASS_URL) as Promise<LiquidGlassModule>
+  }
+  return libPromise
+}
 
 // Wraps children in a liquid glass panel.
-// Structure matters for the library: the glass element must be a direct child of the root,
-// and the root needs a background sibling for the glass to refract.
+// The glass element must be a direct child of the root, and the root needs a
+// background sibling for the glass to refract.
 export function LiquidGlassBox({ children }: { children: ReactNode }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const glassRef = useRef<HTMLDivElement>(null)
@@ -31,11 +50,12 @@ export function LiquidGlassBox({ children }: { children: ReactNode }) {
     const glass = glassRef.current
     if (!root || !glass) return
 
-    let instance: Instance | null = null
+    let instance: GlassInstance | null = null
     let cancelled = false
 
-    LiquidGlass.init({ root, glassElements: [glass] })
-      .then((i: Instance) => {
+    loadLiquidGlass()
+      .then((lib) => lib.LiquidGlass.init({ root, glassElements: [glass] }))
+      .then((i) => {
         if (cancelled) i.destroy()
         else instance = i
       })
