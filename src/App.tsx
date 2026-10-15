@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FileExplorer } from './components/FileExplorer'
 import { SettingsDialog } from './components/SettingsDialog'
 import logo from './assets/logo.png'
+import { AccountButton } from './components/AccountButton'
 import { CodeEditor } from './components/CodeEditor'
 import { AISidebar } from './components/AISidebar'
 import { useAppStore } from './store/useAppStore'
@@ -46,6 +47,7 @@ export default function App() {
           >
             <PanelRight size={16} />
           </button>
+          <AccountButton />
           <button
             onClick={() => setShowSettings(true)}
             className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
