@@ -1,15 +1,17 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react'
-import { AtSign, File, Plus, Send, X } from 'lucide-react'
+import { AtSign, File, Image as ImageIcon, Plus, Send, X } from 'lucide-react'
 import { LiquidGlassBox } from './LiquidGlassBox'
 import { ModelPicker } from './ModelPicker'
-import type { ChatStyle } from '../store/useAppStore'
+import { ModePicker } from './ModePicker'
+import type { AgentMode, ChatStyle } from '../store/useAppStore'
 
 interface ChatInputProps {
   value: string
   onChange: (value: string) => void
   onSend: () => void
   disabled: boolean
-  mode: 'chat' | 'agent' | 'composer'
+  mode: AgentMode
+  onModeChange: (mode: AgentMode) => void
   style: ChatStyle
   fileName: string | null
   useFile: boolean
@@ -24,6 +26,7 @@ export function ChatInput({
   onSend,
   disabled,
   mode,
+  onModeChange,
   style,
   fileName,
   useFile,
@@ -33,22 +36,15 @@ export function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isLiquid = style === 'liquid'
-  const showFile = useFile && fileName !== null
+  const hasFile = fileName !== null
 
-  // Start as one line and grow with the text, up to a cap
+  // One line that grows with the text, up to a cap
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [value])
-
-  const placeholder =
-    mode === 'chat'
-      ? 'Ask about the code (Enter to send)'
-      : mode === 'agent'
-        ? 'Describe a task for the agent'
-        : 'Describe multi-file changes'
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -65,16 +61,16 @@ export function ChatInput({
   const content = (
     <div className="flex flex-col gap-1.5">
       {/* Top row: attach + current file chip */}
-      <div className="flex items-center gap-1.5 min-h-[24px]">
+      <div className="flex items-center gap-1.5 min-h-[22px]">
         <button
           type="button"
           disabled
           title="Attachments (coming soon)"
-          className="p-1 rounded-md text-[#8b949e] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-0.5 rounded text-[#8b949e] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={14} />
         </button>
-        {showFile && (
+        {hasFile && useFile && (
           <span className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-md bg-[#21262d] border border-[#30363d] text-xs text-[#e6edf3]">
             <File size={12} className="text-[#8b949e] shrink-0" />
             <span className="truncate max-w-[140px]">{fileName}</span>
@@ -84,6 +80,15 @@ export function ChatInput({
             </button>
           </span>
         )}
+        {hasFile && !useFile && (
+          <button
+            type="button"
+            onClick={onToggleFile}
+            className="px-2 py-0.5 rounded-md border border-dashed border-[#30363d] text-xs text-[#8b949e] hover:text-white"
+          >
+            + Current File
+          </button>
+        )}
       </div>
 
       {/* Text input */}
@@ -92,28 +97,29 @@ export function ChatInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder={placeholder}
+        placeholder="Plan, @ for context, / for commands"
         rows={1}
         className="w-full bg-transparent text-sm leading-5 text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none"
       />
 
-      {/* Bottom row: model, mention, context, send */}
+      {/* Bottom row: mode + model on the left, actions on the right */}
       <div className="flex items-center justify-between gap-2 text-[11px] text-[#8b949e]">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          <ModePicker value={mode} onChange={onModeChange} placement="up" />
           <ModelPicker value={selectedModel} onChange={onModelChange} placement="up" />
-          <button type="button" onClick={mention} className="flex items-center gap-1 hover:text-white shrink-0">
-            <AtSign size={11} /> Mention
-          </button>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button type="button" onClick={onToggleFile} className="hover:text-white">
-            {useFile ? 'current file' : 'no context'}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button type="button" onClick={mention} title="Mention" className="p-1 rounded hover:text-white hover:bg-[#21262d]">
+            <AtSign size={13} />
+          </button>
+          <button type="button" disabled title="Images (coming soon)" className="p-1 rounded disabled:opacity-50">
+            <ImageIcon size={13} />
           </button>
           <button
             type="button"
             onClick={onSend}
             disabled={!value.trim() || disabled}
-            className="p-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md bg-[#e6edf3] text-[#0d1117] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Send size={12} />
           </button>
