@@ -2,6 +2,7 @@ import Editor, { DiffEditor } from '@monaco-editor/react'
 import { useAppStore } from '../store/useAppStore'
 import { X } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { WelcomeScreen } from './WelcomeScreen'
 
 export function CodeEditor() {
   const {
@@ -56,13 +57,7 @@ export function CodeEditor() {
       {/* Editor area */}
       <div className="flex-1 relative">
         {!activeTab ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#8b949e] gap-2">
-            <p className="text-lg">Spectrum</p>
-            <p className="text-sm">Open a folder and select a file to start</p>
-            <p className="text-xs mt-4 opacity-60">
-              Press Ctrl+L to focus AI · Tab for autocomplete (coming soon)
-            </p>
-          </div>
+          <WelcomeScreen />
         ) : activeDiff ? (
           <DiffEditor
             height="100%"
