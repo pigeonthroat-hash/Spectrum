@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FileExplorer } from './components/FileExplorer'
 import { SettingsDialog } from './components/SettingsDialog'
+import logo from './assets/logo.png'
 import { CodeEditor } from './components/CodeEditor'
 import { AISidebar } from './components/AISidebar'
 import { useAppStore } from './store/useAppStore'
@@ -22,6 +23,7 @@ export default function App() {
       {/* Top bar */}
       <header className="h-9 flex items-center justify-between px-3 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
         <div className="flex items-center gap-3">
+          <img src={logo} alt="" className="h-4 w-auto" />
           <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">
             Spectrum
           </span>
