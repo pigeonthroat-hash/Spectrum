@@ -21,7 +21,7 @@ const GLASS_CONFIG = {
   edgeHighlight: 0.15,
   specular: 0.4,
   fresnel: 1,
-  cornerRadius: 22,
+  cornerRadius: 14,
   zRadius: 18,
   shadowOpacity: 0.3,
   shadowSpread: 10,
@@ -69,22 +69,17 @@ export function LiquidGlassBox({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div ref={rootRef} className="relative p-2">
-      <div aria-hidden className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none bg-[#0d1117]">
-        <div
-          className="absolute -left-8 -top-8 w-44 h-44 rounded-full"
-          style={{ background: 'radial-gradient(circle, #3fb950 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -right-10 top-6 w-48 h-48 rounded-full"
-          style={{ background: 'radial-gradient(circle, #58a6ff 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute left-1/3 -bottom-10 w-40 h-40 rounded-full"
-          style={{ background: 'radial-gradient(circle, #d2a8ff 0%, transparent 70%)' }}
-        />
-      </div>
-      <div ref={glassRef} data-config={JSON.stringify(GLASS_CONFIG)} className="liquid-glass relative p-2.5">
+    <div ref={rootRef} className="relative p-1">
+      <div
+        aria-hidden
+        className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none bg-[#0d1117]"
+        style={{
+          backgroundImage:
+            'radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)',
+          backgroundSize: '8px 8px',
+        }}
+      />
+      <div ref={glassRef} data-config={JSON.stringify(GLASS_CONFIG)} className="liquid-glass relative px-2.5 py-2 rounded-[14px]">
         {children}
       </div>
     </div>
