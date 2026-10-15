@@ -6,9 +6,10 @@ import { LOCAL_MODELS, fetchOpenRouterFreeModels, type ModelOption } from '../li
 interface ModelPickerProps {
   value: string
   onChange: (id: string) => void
+  placement?: 'up' | 'down'
 }
 
-export function ModelPicker({ value, onChange }: ModelPickerProps) {
+export function ModelPicker({ value, onChange, placement = 'down' }: ModelPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [remote, setRemote] = useState<ModelOption[]>([])
@@ -65,7 +66,10 @@ export function ModelPicker({ value, onChange }: ModelPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-72 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl overflow-hidden">
+        <div className={cn(
+          'absolute right-0 w-72 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl overflow-hidden',
+          placement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+        )}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[#30363d]">
             <Search size={13} className="text-[#8b949e] shrink-0" />
             <input
