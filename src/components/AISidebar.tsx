@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { Send, Bot, User, Loader2, Sparkles, Check, X, RotateCcw } from 'lucide-react'
+import { Bot, User, Loader2, Sparkles, Check, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { ModelPicker } from './ModelPicker'
+import { ChatInput } from './ChatInput'
+import { streamOllamaChat, type ChatMessage } from '../lib/providers/ollama'
+
+const MAX_CONTEXT_CHARS = 12000
 
 export function AISidebar() {
   const {
     messages,
     addMessage,
+    updateMessage,
     isGenerating,
     setGenerating,
     selectedModel,
@@ -19,59 +24,55 @@ export function AISidebar() {
     rejectAllDiffs,
     activeTabPath,
     openTabs,
+    chatStyle,
   } = useAppStore()
 
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim() || isGenerating) return
-    const userMsg = input.trim()
-    setInput('')
-    addMessage({ role: 'user', content: userMsg })
-    setGenerating(true)
-
-    // Simulated AI response for scaffolding (real provider later)
-    setTimeout(() => {
-      const active = openTabs.find((t) => t.path === activeTabPath)
-      let reply = `I'll help with that using **${selectedModel}**.\n\n`
-
-      if (mode === 'agent' || mode === 'composer') {
-        reply += `Analyzing the request: "${userMsg}"\n\n`
-        if (active) {
-          reply += `Looking at \`${active.name}\`...\n\n`
-          // Demo diff
-          const original = active.content
-          const modified = original + `\n\n// AI suggested addition for: ${userMsg}\nfunction aiHelper() {\n  console.log("Enhanced by Spectrum");\n}\n`
-          useAppStore.getState().setPendingDiffs([
-            {
-              path: active.path,
-              original,
-              modified,
-            },
-          ])
-          reply += `I've prepared a change. Review the green (additions) / red (deletions) in the editor and Accept or Reject.`
-        } else {
-          reply += `Open a file first so I can propose precise edits.`
-        }
-      } else {
-        reply += `This is a chat reply. In Agent/Composer mode I can edit files across the workspace.\n\nFree models (Gemma, Qwen, DeepSeek via Ollama) will be fully wired next.`
-      }
-
-      addMessage({ role: 'assistant', content: reply })
-      setGenerating(false)
-    }, 900)
+  const buildSystemPrompt = (): ChatMessage => {
+    const active = openTabs.find((t) => t.path === activeTabPath)
+    let content =
+      'You are Spectrum, a coding assistant inside a code editor. Be concise and practical. Use code blocks for code.'
+    if (active) {
+      content += `\n\nThe user has this file open: ${active.name}\n\`\`\`\n${active.content.slice(0, MAX_CONTEXT_CHARS)}\n\`\`\``
+    }
+    return { role: 'system', content }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+  const handleSend = async () => {
+    const text = input.trim()
+    if (!text || isGenerating) return
+    setInput('')
+
+    // History before this message, then the new user message
+    const history: ChatMessage[] = messages
+      .filter((m) => m.content)
+      .map((m) => ({ role: m.role, content: m.content }))
+    const prompt: ChatMessage[] = [buildSystemPrompt(), ...history, { role: 'user', content: text }]
+
+    addMessage({ role: 'user', content: text })
+    const assistantId = addMessage({ role: 'assistant', content: '' })
+    setGenerating(true)
+
+    try {
+      if (!selectedModel.startsWith('ollama/')) {
+        throw new Error('Only local Ollama models are connected so far. Pick one of the "local" models.')
+      }
+      await streamOllamaChat({
+        model: selectedModel,
+        messages: prompt,
+        onToken: (token) => updateMessage(assistantId, (prev) => prev + token),
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      updateMessage(assistantId, (prev) => (prev ? `${prev}\n\n[Error: ${msg}]` : `[Error: ${msg}]`))
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -129,7 +130,7 @@ export function AISidebar() {
             <div>
               <p className="text-sm font-medium text-[#e6edf3]">Spectrum Agent</p>
               <p className="text-xs mt-1 max-w-[220px]">
-                Ask anything, or switch to Agent/Composer to edit files with free models.
+                Ask anything. Local models run through Ollama on your machine.
               </p>
             </div>
           </div>
@@ -156,7 +157,7 @@ export function AISidebar() {
                   : 'bg-[#161b22] text-[#e6edf3] border border-[#30363d]'
               )}
             >
-              {msg.content}
+              {msg.content || <Loader2 size={14} className="animate-spin text-[#8b949e]" />}
             </div>
             {msg.role === 'user' && (
               <div className="w-6 h-6 rounded-full bg-[#30363d] flex items-center justify-center shrink-0 mt-0.5">
@@ -165,51 +166,18 @@ export function AISidebar() {
             )}
           </div>
         ))}
-
-        {isGenerating && (
-          <div className="flex gap-2.5 items-center text-[#8b949e] text-sm">
-            <div className="w-6 h-6 rounded-full bg-[#238636] flex items-center justify-center">
-              <Loader2 size={14} className="text-white animate-spin" />
-            </div>
-            <span>Thinking...</span>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-[#30363d] shrink-0">
-        <div className="relative">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              mode === 'chat'
-                ? 'Ask about the code...'
-                : mode === 'agent'
-                  ? 'Describe a task for the agent...'
-                  : 'Describe multi-file changes...'
-            }
-            rows={3}
-            className="w-full bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 text-sm text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none focus:border-[#58a6ff] pr-10"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isGenerating}
-            className="absolute right-2 bottom-2 p-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send size={14} className="text-white" />
-          </button>
-        </div>
-        <div className="flex items-center justify-between mt-1.5 text-[10px] text-[#8b949e]">
-          <span>Enter to send · Shift+Enter newline</span>
-          <span className="flex items-center gap-1">
-            <RotateCcw size={10} /> Free models ready
-          </span>
-        </div>
-      </div>
+      <ChatInput
+        value={input}
+        onChange={setInput}
+        onSend={handleSend}
+        disabled={isGenerating}
+        mode={mode}
+        style={chatStyle}
+      />
     </div>
   )
 }
