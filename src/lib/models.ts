@@ -3,7 +3,7 @@ import { BROWSER_MODELS } from './ai/browserModels'
 export interface ModelOption {
   id: string // full id used in requests, e.g. "ollama/gemma4:e4b"
   label: string // display name
-  provider: 'browser' | 'ollama' | 'openrouter'
+  provider: 'browser' | 'ollama' | 'openrouter' | 'groq'
   popular?: boolean
   isNew?: boolean
 }
@@ -23,6 +23,13 @@ export const LOCAL_MODELS: ModelOption[] = [
   { id: 'ollama/gemma2:9b', label: 'Gemma 2 9B', provider: 'ollama', popular: true },
   { id: 'ollama/qwen2.5-coder:7b', label: 'Qwen2.5-Coder 7B', provider: 'ollama', popular: true },
   { id: 'ollama/deepseek-coder-v2:16b', label: 'DeepSeek Coder V2 16B', provider: 'ollama' },
+]
+
+// Groq cloud models. Needs your Groq API key (see providers/keys.ts).
+// Check model ids at console.groq.com/docs/models if one stops working.
+export const GROQ_MODELS: ModelOption[] = [
+  { id: 'groq/llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)', provider: 'groq', popular: true },
+  { id: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B (Groq)', provider: 'groq' },
 ]
 
 // OpenRouter free models rotate often, so the full list is fetched live.

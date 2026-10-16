@@ -1,5 +1,7 @@
 import { streamBrowserAI } from './webllm'
 import { streamOllamaChat } from '../providers/ollama'
+import { streamOpenAICompatible } from '../providers/openaiCompatible'
+import { getApiKey } from '../providers/keys'
 
 export interface TurnMessage {
   role: 'system' | 'user' | 'assistant'
@@ -28,6 +30,21 @@ export async function streamModel(opts: {
   if (opts.modelId.startsWith('ollama/')) {
     return streamOllamaChat({
       model: opts.modelId,
+      messages: opts.messages,
+      onToken: opts.onToken,
+      signal: opts.signal,
+      stop: opts.stop,
+      maxTokens: opts.maxTokens,
+    })
+  }
+  if (opts.modelId.startsWith('groq/')) {
+    const apiKey = getApiKey('groq')
+    if (!apiKey) throw new Error('Add your Groq API key first. See the test steps.')
+    return streamOpenAICompatible({
+      baseUrl: 'https://api.groq.com/openai/v1',
+      apiKey,
+      providerName: 'Groq',
+      model: opts.modelId.slice('groq/'.length),
       messages: opts.messages,
       onToken: opts.onToken,
       signal: opts.signal,

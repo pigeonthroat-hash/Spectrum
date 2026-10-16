@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, Loader2, Search } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { LOCAL_MODELS, fetchOpenRouterFreeModels, type ModelOption } from '../lib/models'
+import { LOCAL_MODELS, GROQ_MODELS, fetchOpenRouterFreeModels, type ModelOption } from '../lib/models'
 
 interface ModelPickerProps {
   value: string
@@ -38,7 +38,7 @@ export function ModelPicker({ value, onChange, placement = 'down' }: ModelPicker
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  const all = useMemo(() => [...LOCAL_MODELS, ...remote], [remote])
+  const all = useMemo(() => [...LOCAL_MODELS, ...GROQ_MODELS, ...remote], [remote])
   const current = all.find((m) => m.id === value)
 
   const visible = useMemo(() => {
