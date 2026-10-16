@@ -23,6 +23,15 @@ async function buildAppConfig() {
   }
 }
 
+// Forgets the loaded model so the next message loads it again
+function forgetEngine() {
+  const old = engine
+  engine = null
+  loadedModel = null
+  loading = null
+  if (old) void old.unload().catch(() => undefined)
+}
+
 // Downloads (first time only) and loads a model. Calls onProgress while downloading.
 export async function ensureModel(
   modelId: string,
@@ -38,11 +47,7 @@ export async function ensureModel(
 
   const promise = (async () => {
     const webllm = await import('@mlc-ai/web-llm')
-    if (engine) {
-      await engine.unload()
-      engine = null
-      loadedModel = null
-    }
+    if (engine) forgetEngine()
     const created = await webllm.CreateMLCEngine(modelId, {
       appConfig: await buildAppConfig(),
       initProgressCallback: (r) => onProgress?.({ progress: r.progress, text: r.text }),
@@ -75,23 +80,40 @@ export async function requestPersistentStorage(): Promise<boolean> {
   }
 }
 
+// Phones and some laptops lose the GPU when the browser goes to the background.
+// Those errors mean the loaded model is dead, so we reset it and explain.
+function isGpuLostError(err: unknown): boolean {
+  const text = err instanceof Error ? err.message : String(err)
+  return /GPUBuffer|mapAsync|Instance reference|device.*lost|context.*lost|out of memory/i.test(text)
+}
+
 export async function streamBrowserAI(opts: {
   modelId: string
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
   onToken: (text: string) => void
   signal?: AbortSignal
 }): Promise<void> {
-  const eng = await ensureModel(opts.modelId)
-  const stream = await eng.chat.completions.create({
-    messages: opts.messages as ChatCompletionMessageParam[],
-    stream: true,
-  })
-  for await (const chunk of stream) {
-    if (opts.signal?.aborted) {
-      await eng.interruptGenerate()
-      break
+  try {
+    const eng = await ensureModel(opts.modelId)
+    const stream = await eng.chat.completions.create({
+      messages: opts.messages as ChatCompletionMessageParam[],
+      stream: true,
+    })
+    for await (const chunk of stream) {
+      if (opts.signal?.aborted) {
+        await eng.interruptGenerate()
+        break
+      }
+      const text = chunk.choices[0]?.delta?.content
+      if (text) opts.onToken(text)
     }
-    const text = chunk.choices[0]?.delta?.content
-    if (text) opts.onToken(text)
+  } catch (err) {
+    if (isGpuLostError(err)) {
+      forgetEngine()
+      throw new Error(
+        'The graphics connection was reset, which often happens when the browser is switched away from. Send your message again to reload the model.'
+      )
+    }
+    throw err
   }
 }
