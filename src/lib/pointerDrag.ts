@@ -17,7 +17,8 @@ export function beginPointerDrag(
   onMove: (x: number, y: number) => void,
   onDrop: () => void
 ) {
-  if (e.button !== 0) return
+  // Touch screens scroll with the same gesture, so drags are mouse/pen only
+  if (e.button !== 0 || e.pointerType === 'touch') return
   const startX = e.clientX
   const startY = e.clientY
   let active = false
