@@ -1,5 +1,5 @@
 import type { MLCEngineInterface, ChatCompletionMessageParam } from '@mlc-ai/web-llm'
-import { GEMMA4_ID, GEMMA4_MODEL_RECORD } from './browserModels'
+import { GEMMA4_MODEL_RECORD } from './browserModels'
 
 export interface LoadProgress {
   progress: number // 0 to 1
