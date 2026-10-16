@@ -40,29 +40,26 @@ export default function App() {
     `p-1.5 rounded hover:bg-[#21262d] hover:text-white ${on ? 'text-white bg-[#21262d]' : 'text-[#8b949e]'}`
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
+    <div className="h-[100dvh] w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
       {/* Top bar */}
       <header className="h-9 flex items-center justify-between px-3 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
         <div className="flex items-center gap-3">
           <img src={logo} alt="" className="h-4 w-auto" />
           <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">Spectrum</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">v0.1 · Free models</span>
+          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">
+            v0.1 · Free models
+          </span>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={toggleExplorer}
-            className={toggleClass(showExplorer)}
-            title="Toggle Explorer (Ctrl+B)"
-          >
-            <PanelLeft size={16} />
-          </button>
-          <button
-            onClick={toggleAI}
-            className={toggleClass(showAI)}
-            title="Toggle Chat (Ctrl+Alt+B)"
-          >
-            <PanelRight size={16} />
-          </button>
+          {/* Panel toggles only on wider screens; phones use the bar at the bottom */}
+          <div className="hidden md:flex items-center gap-1">
+            <button onClick={toggleExplorer} className={toggleClass(showExplorer)} title="Toggle Explorer (Ctrl+B)">
+              <PanelLeft size={16} />
+            </button>
+            <button onClick={toggleAI} className={toggleClass(showAI)} title="Toggle Chat (Ctrl+Alt+B)">
+              <PanelRight size={16} />
+            </button>
+          </div>
           <AccountButton />
           <button
             onClick={() => setShowSettings(true)}
@@ -84,9 +81,9 @@ export default function App() {
       <footer className="h-6 flex items-center justify-between px-3 border-t border-[#30363d] bg-[#161b22] text-[11px] text-[#8b949e] shrink-0">
         <div className="flex items-center gap-3">
           <span>{SAVE_LABEL[saveStatus]}</span>
-          <span className="text-[#3fb950]">● Free models enabled</span>
+          <span className="hidden md:inline text-[#3fb950]">● Free models enabled</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <span>UTF-8</span>
           <span>TypeScript</span>
         </div>
