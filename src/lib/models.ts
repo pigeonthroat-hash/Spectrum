@@ -1,13 +1,21 @@
+import { BROWSER_MODELS } from './ai/browserModels'
+
 export interface ModelOption {
   id: string // full id used in requests, e.g. "ollama/gemma4:e4b"
   label: string // display name
-  provider: 'ollama' | 'openrouter'
+  provider: 'browser' | 'ollama' | 'openrouter'
   popular?: boolean
   isNew?: boolean
 }
 
 // Local models served by Ollama (run on your own machine, always free)
 export const LOCAL_MODELS: ModelOption[] = [
+  ...BROWSER_MODELS.map((m) => ({
+    id: `browser/${m.id}`,
+    label: m.experimental ? `${m.label} (experimental)` : m.label,
+    provider: 'browser' as const,
+    popular: m.popular,
+  })),
   { id: 'ollama/gemma4:e4b', label: 'Gemma 4 E4B', provider: 'ollama', popular: true, isNew: true },
   { id: 'ollama/gemma4:e2b', label: 'Gemma 4 E2B', provider: 'ollama', isNew: true },
   { id: 'ollama/gemma4:26b', label: 'Gemma 4 26B', provider: 'ollama', isNew: true },
