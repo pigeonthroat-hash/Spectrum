@@ -48,7 +48,9 @@ export async function ensureModel(
   const promise = (async () => {
     const webllm = await import('@mlc-ai/web-llm')
     if (engine) forgetEngine()
-    const created = await webllm.CreateMLCEngine(modelId, {
+    // The engine runs in a Web Worker, so the page does not freeze while the model works.
+    const worker = new Worker(new URL('./webllm.worker.ts', import.meta.url), { type: 'module' })
+    const created = await webllm.CreateWebWorkerMLCEngine(worker, modelId, {
       appConfig: await buildAppConfig(),
       initProgressCallback: (r) => onProgress?.({ progress: r.progress, text: r.text }),
     })
