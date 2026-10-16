@@ -5,6 +5,7 @@ export type ChatStyle = 'classic' | 'liquid'
 export type AgentMode = 'agent' | 'plan' | 'debug' | 'ask'
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export type PanelId = 'explorer' | 'chat'
+export type MobileView = 'explorer' | 'editor' | 'chat'
 
 export interface FileNode {
   name: string
@@ -63,6 +64,7 @@ interface AppState {
   chatCollapsed: boolean
   maximized: PanelId | null
   draggingPanel: PanelId | null
+  mobileView: MobileView
 
   // Cloud project
   projectId: string | null
@@ -101,6 +103,7 @@ interface AppState {
   dockPanel: (id: PanelId, slot: 'left' | 'right') => void
   setDraggingPanel: (id: PanelId | null) => void
   setChatStyle: (style: ChatStyle) => void
+  setMobileView: (view: MobileView) => void
 
   // Actions: cloud project
   setProject: (id: string | null, name: string | null) => void
@@ -126,6 +129,7 @@ export const useAppStore = create<AppState>()(
       showExplorer: true,
       showAI: true,
       chatStyle: 'classic',
+      mobileView: 'editor',
 
       leftPanel: 'explorer',
       rightPanel: 'chat',
@@ -277,6 +281,7 @@ export const useAppStore = create<AppState>()(
       setDraggingPanel: (id) => set({ draggingPanel: id }),
 
       setChatStyle: (style) => set({ chatStyle: style }),
+      setMobileView: (view) => set({ mobileView: view }),
 
       // Switching projects clears open tabs and the tree
       setProject: (id, name) =>
