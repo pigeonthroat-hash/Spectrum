@@ -8,6 +8,7 @@ import { storageFor } from '../lib/storage/active'
 import { errorText } from '../lib/errors'
 import { useDragStore, type FileTarget } from '../lib/dragStore'
 import { beginPointerDrag, clickWasDrag } from '../lib/pointerDrag'
+import { isMobileNow } from '../lib/useIsMobile'
 
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '')
 
@@ -207,6 +208,7 @@ export function FileExplorer() {
     try {
       const text = await storageFor(projectId).readFile(node.path)
       openFile(node.path, node.name, text, languageFor(node.name))
+      if (isMobileNow()) useAppStore.getState().setMobileView('editor')
     } catch (err) {
       setError(errorText(err))
     }
