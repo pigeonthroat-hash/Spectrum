@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAppStore, type PanelId } from '../store/useAppStore'
 import { useDragStore } from '../lib/dragStore'
 import { PanelFrame } from './PanelFrame'
+import { MobileWorkspace } from './MobileWorkspace'
+import { useIsMobile } from '../lib/useIsMobile'
 import { FileExplorer } from './FileExplorer'
 import { AISidebar } from './AISidebar'
 import { CodeEditor } from './CodeEditor'
@@ -26,6 +28,7 @@ function setWidth(id: PanelId, width: number) {
 
 // The main area: left panel, editor, right panel, with draggable dividers
 export function Workspace() {
+  const mobile = useIsMobile()
   const leftPanel = useAppStore((s) => s.leftPanel)
   const rightPanel = useAppStore((s) => s.rightPanel)
   const showExplorer = useAppStore((s) => s.showExplorer)
@@ -38,6 +41,8 @@ export function Workspace() {
 
   const isVisible = (id: PanelId) => (id === 'explorer' ? showExplorer : showAI)
   const isCollapsed = (id: PanelId) => (id === 'explorer' ? explorerCollapsed : chatCollapsed)
+
+  if (mobile) return <MobileWorkspace />
 
   // One panel fills the whole area
   if (maximized) {
