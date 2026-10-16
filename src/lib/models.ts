@@ -28,8 +28,8 @@ export const LOCAL_MODELS: ModelOption[] = [
 // Groq cloud models. Needs your Groq API key (see providers/keys.ts).
 // Check model ids at console.groq.com/docs/models if one stops working.
 export const GROQ_MODELS: ModelOption[] = [
-  { id: 'groq/llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)', provider: 'groq', popular: true },
-  { id: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B (Groq)', provider: 'groq' },
+  { id: 'groq/openai/gpt-oss-120b', label: 'GPT-OSS 120B (Groq)', provider: 'groq', popular: true },
+  { id: 'groq/openai/gpt-oss-20b', label: 'GPT-OSS 20B (Groq, fastest)', provider: 'groq' },
 ]
 
 // OpenRouter free models rotate often, so the full list is fetched live.
