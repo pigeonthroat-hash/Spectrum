@@ -1,11 +1,10 @@
-import { useState } from 'react'
-import { FileExplorer } from './components/FileExplorer'
+import { useEffect, useState } from 'react'
 import { SettingsDialog } from './components/SettingsDialog'
 import logo from './assets/logo.png'
 import { AccountButton } from './components/AccountButton'
 import { SaveController } from './components/SaveController'
-import { CodeEditor } from './components/CodeEditor'
-import { AISidebar } from './components/AISidebar'
+import { Workspace } from './components/Workspace'
+import { DragGhost } from './components/DragGhost'
 import { useAppStore } from './store/useAppStore'
 import { PanelLeft, PanelRight, Settings } from 'lucide-react'
 
@@ -17,16 +16,28 @@ const SAVE_LABEL: Record<string, string> = {
 }
 
 export default function App() {
-  const {
-    showExplorer,
-    showAI,
-    explorerWidth,
-    sidebarWidth,
-    toggleExplorer,
-    toggleAI,
-  } = useAppStore()
-  const [showSettings, setShowSettings] = useState(false)
+  const showExplorer = useAppStore((s) => s.showExplorer)
+  const showAI = useAppStore((s) => s.showAI)
+  const toggleExplorer = useAppStore((s) => s.toggleExplorer)
+  const toggleAI = useAppStore((s) => s.toggleAI)
   const saveStatus = useAppStore((s) => s.saveStatus)
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Ctrl+B toggles the explorer, Ctrl+Alt+B toggles the chat
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        if (e.altKey) toggleAI()
+        else toggleExplorer()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggleExplorer, toggleAI])
+
+  const toggleClass = (on: boolean) =>
+    `p-1.5 rounded hover:bg-[#21262d] hover:text-white ${on ? 'text-white bg-[#21262d]' : 'text-[#8b949e]'}`
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
@@ -34,25 +45,21 @@ export default function App() {
       <header className="h-9 flex items-center justify-between px-3 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
         <div className="flex items-center gap-3">
           <img src={logo} alt="" className="h-4 w-auto" />
-          <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">
-            Spectrum
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">
-            v0.1 · Free models
-          </span>
+          <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">Spectrum</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">v0.1 · Free models</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={toggleExplorer}
-            className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
-            title="Toggle Explorer"
+            className={toggleClass(showExplorer)}
+            title="Toggle Explorer (Ctrl+B)"
           >
             <PanelLeft size={16} />
           </button>
           <button
             onClick={toggleAI}
-            className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
-            title="Toggle AI Sidebar"
+            className={toggleClass(showAI)}
+            title="Toggle Chat (Ctrl+Alt+B)"
           >
             <PanelRight size={16} />
           </button>
@@ -67,25 +74,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main layout */}
-      <div className="flex-1 flex min-h-0">
-        {showExplorer && (
-          <div style={{ width: explorerWidth }} className="shrink-0">
-            <FileExplorer />
-          </div>
-        )}
+      <Workspace />
 
-        <div className="flex-1 min-w-0">
-          <CodeEditor />
-        </div>
-
-        {showAI && (
-          <div style={{ width: sidebarWidth }} className="shrink-0">
-            <AISidebar />
-          </div>
-        )}
-      </div>
-
+      <DragGhost />
       <SaveController />
       <SettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
 

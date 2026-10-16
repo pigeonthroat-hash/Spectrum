@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware'
 export type ChatStyle = 'classic' | 'liquid'
 export type AgentMode = 'agent' | 'plan' | 'debug' | 'ask'
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+export type PanelId = 'explorer' | 'chat'
 
 export interface FileNode {
   name: string
@@ -37,10 +38,9 @@ export interface DiffHunk {
 
 interface AppState {
   // Workspace
-  rootPath: string | null
-  fileTree: FileNode[]
   openTabs: OpenTab[]
   activeTabPath: string | null
+  fileTree: FileNode[]
 
   // AI
   messages: ChatMessage[]
@@ -49,25 +49,35 @@ interface AppState {
   mode: AgentMode
   pendingDiffs: DiffHunk[]
 
-  // UI
+  // Panels: sizes and visibility
   sidebarWidth: number
   explorerWidth: number
   showExplorer: boolean
   showAI: boolean
   chatStyle: ChatStyle
 
+  // Panels: layout
+  leftPanel: PanelId // which panel sits on the left
+  rightPanel: PanelId // which panel sits on the right
+  explorerCollapsed: boolean
+  chatCollapsed: boolean
+  maximized: PanelId | null
+  draggingPanel: PanelId | null
+
   // Cloud project
   projectId: string | null
   projectName: string | null
   saveStatus: SaveStatus
 
-  // Actions
-  setRootPath: (path: string) => void
+  // Actions: files and tabs
   setFileTree: (tree: FileNode[]) => void
   openFile: (path: string, name: string, content: string, language?: string) => void
   closeTab: (path: string) => void
   setActiveTab: (path: string) => void
   updateTabContent: (path: string, content: string) => void
+  remapTabs: (from: string, to: string) => void
+
+  // Actions: AI
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => string
   updateMessage: (id: string, update: (prev: string) => string) => void
   clearMessages: () => void
@@ -79,11 +89,20 @@ interface AppState {
   rejectDiff: (path: string) => void
   acceptAllDiffs: () => void
   rejectAllDiffs: () => void
+
+  // Actions: panels
   setSidebarWidth: (w: number) => void
   setExplorerWidth: (w: number) => void
   toggleExplorer: () => void
   toggleAI: () => void
+  hidePanel: (id: PanelId) => void
+  setCollapsed: (id: PanelId, value: boolean) => void
+  toggleMaximized: (id: PanelId) => void
+  dockPanel: (id: PanelId, slot: 'left' | 'right') => void
+  setDraggingPanel: (id: PanelId | null) => void
   setChatStyle: (style: ChatStyle) => void
+
+  // Actions: cloud project
   setProject: (id: string | null, name: string | null) => void
   markSaved: (path: string, content: string) => void
   setSaveStatus: (status: SaveStatus) => void
@@ -92,10 +111,9 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      rootPath: null,
-      fileTree: [],
       openTabs: [],
       activeTabPath: null,
+      fileTree: [],
 
       messages: [],
       isGenerating: false,
@@ -109,17 +127,22 @@ export const useAppStore = create<AppState>()(
       showAI: true,
       chatStyle: 'classic',
 
+      leftPanel: 'explorer',
+      rightPanel: 'chat',
+      explorerCollapsed: false,
+      chatCollapsed: false,
+      maximized: null,
+      draggingPanel: null,
+
       projectId: null,
       projectName: null,
       saveStatus: 'idle',
 
-      setRootPath: (path) => set({ rootPath: path }),
       setFileTree: (tree) => set({ fileTree: tree }),
 
       openFile: (path, name, content, language = 'typescript') => {
         const { openTabs } = get()
-        const exists = openTabs.find((t) => t.path === path)
-        if (exists) {
+        if (openTabs.some((t) => t.path === path)) {
           set({ activeTabPath: path })
           return
         }
@@ -149,11 +172,23 @@ export const useAppStore = create<AppState>()(
         })
       },
 
+      // After a file or folder moves, open tabs follow it to the new path
+      remapTabs: (from, to) => {
+        const remap = (p: string) =>
+          p === from ? to : p.startsWith(`${from}/`) ? `${to}${p.slice(from.length)}` : p
+        const active = get().activeTabPath
+        set({
+          openTabs: get().openTabs.map((t) => {
+            const path = remap(t.path)
+            return path === t.path ? t : { ...t, path, name: path.split('/').pop() ?? path }
+          }),
+          activeTabPath: active ? remap(active) : null,
+        })
+      },
+
       addMessage: (msg) => {
         const id = crypto.randomUUID()
-        set({
-          messages: [...get().messages, { ...msg, id, timestamp: Date.now() }],
-        })
+        set({ messages: [...get().messages, { ...msg, id, timestamp: Date.now() }] })
         return id
       },
 
@@ -175,11 +210,10 @@ export const useAppStore = create<AppState>()(
         const { pendingDiffs, openTabs } = get()
         const diff = pendingDiffs.find((d) => d.path === path)
         if (!diff) return
-        const updatedTabs = openTabs.map((t) =>
-          t.path === path ? { ...t, content: diff.modified, isDirty: true } : t
-        )
         set({
-          openTabs: updatedTabs,
+          openTabs: openTabs.map((t) =>
+            t.path === path ? { ...t, content: diff.modified, isDirty: true } : t
+          ),
           pendingDiffs: pendingDiffs.filter((d) => d.path !== path),
         })
       },
@@ -202,8 +236,46 @@ export const useAppStore = create<AppState>()(
 
       setSidebarWidth: (w) => set({ sidebarWidth: w }),
       setExplorerWidth: (w) => set({ explorerWidth: w }),
-      toggleExplorer: () => set({ showExplorer: !get().showExplorer }),
-      toggleAI: () => set({ showAI: !get().showAI }),
+
+      toggleExplorer: () => {
+        if (get().showExplorer) get().hidePanel('explorer')
+        else set({ showExplorer: true })
+      },
+
+      toggleAI: () => {
+        if (get().showAI) get().hidePanel('chat')
+        else set({ showAI: true })
+      },
+
+      // Closing a panel hides it. The top bar brings it back.
+      hidePanel: (id) =>
+        set({
+          ...(id === 'explorer' ? { showExplorer: false } : { showAI: false }),
+          maximized: get().maximized === id ? null : get().maximized,
+          draggingPanel: null,
+        }),
+
+      setCollapsed: (id, value) =>
+        set(id === 'explorer' ? { explorerCollapsed: value } : { chatCollapsed: value }),
+
+      toggleMaximized: (id) => set({ maximized: get().maximized === id ? null : id }),
+
+      // Puts the dragged panel in the given slot. With two panels, that means swapping them.
+      dockPanel: (id, slot) => {
+        const current = slot === 'left' ? get().leftPanel : get().rightPanel
+        if (current === id) {
+          set({ draggingPanel: null })
+          return
+        }
+        set({
+          leftPanel: get().rightPanel,
+          rightPanel: get().leftPanel,
+          draggingPanel: null,
+        })
+      },
+
+      setDraggingPanel: (id) => set({ draggingPanel: id }),
+
       setChatStyle: (style) => set({ chatStyle: style }),
 
       // Switching projects clears open tabs and the tree
@@ -231,7 +303,18 @@ export const useAppStore = create<AppState>()(
     {
       name: 'spectrum-settings',
       // Only these survive a reload
-      partialize: (s) => ({ chatStyle: s.chatStyle, selectedModel: s.selectedModel }),
+      partialize: (s) => ({
+        chatStyle: s.chatStyle,
+        selectedModel: s.selectedModel,
+        sidebarWidth: s.sidebarWidth,
+        explorerWidth: s.explorerWidth,
+        showExplorer: s.showExplorer,
+        showAI: s.showAI,
+        leftPanel: s.leftPanel,
+        rightPanel: s.rightPanel,
+        explorerCollapsed: s.explorerCollapsed,
+        chatCollapsed: s.chatCollapsed,
+      }),
     }
   )
 )

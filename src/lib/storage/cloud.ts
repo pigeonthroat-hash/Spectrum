@@ -159,11 +159,37 @@ export class CloudStorage implements StorageProvider {
     await this.writeFile(`${path}/${KEEP}`, '')
   }
 
-  // Files only for now. Folder rename comes with the explorer work.
+  // Moves or renames a file or a whole folder. Only the paths in the database change;
+  // the stored pieces are reused, so nothing is re-uploaded.
   async rename(from: string, to: string): Promise<void> {
-    const text = await this.readFile(from)
-    await this.writeFile(to, text)
-    await this.remove(from)
+    if (from === to) return
+    if (to.startsWith(`${from}/`)) throw new Error('A folder cannot be moved inside itself')
+
+    const clashes = [
+      ...(await this.selectRows(to, false)),
+      ...(await this.selectRows(to, true)),
+    ]
+    if (clashes.length > 0) throw new Error('Something with that name already exists there')
+
+    const rows = [
+      ...(await this.selectRows(from, false)),
+      ...(await this.selectRows(from, true)),
+    ]
+    for (const row of rows) {
+      const { error } = await client()
+        .from('files')
+        .update({ path: to + row.path.slice(from.length) })
+        .eq('id', row.id)
+      if (error) throw error
+    }
+  }
+
+  // Finds rows at exactly `path`, or inside it when asPrefix is true
+  private async selectRows(path: string, asPrefix: boolean): Promise<{ id: string; path: string }[]> {
+    const base = client().from('files').select('id,path').eq('project_id', this.projectId)
+    const { data, error } = asPrefix ? await base.like('path', `${path}/%`) : await base.eq('path', path)
+    if (error) throw error
+    return (data ?? []) as { id: string; path: string }[]
   }
 
   // Removes a file, or a whole folder and everything inside it.

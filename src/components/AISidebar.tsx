@@ -85,7 +85,7 @@ export function AISidebar() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#0d1117] border-l border-[#30363d]">
+    <div className="h-full flex flex-col bg-[#0d1117]">
       {/* Pending changes bar */}
       {pendingDiffs.length > 0 && (
         <div className="px-3 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between gap-2 shrink-0">
