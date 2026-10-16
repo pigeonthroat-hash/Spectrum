@@ -6,21 +6,26 @@ export interface ChatMessage {
 const OLLAMA_URL = 'http://localhost:11434'
 
 // Streams a chat reply from a local Ollama model, calling onToken for each piece of text.
-// selectedModel looks like "ollama/gemma4:e4b"; Ollama itself wants "gemma4:e4b".
+// model looks like "ollama/gemma4:e4b"; Ollama itself wants "gemma4:e4b".
 export async function streamOllamaChat(opts: {
   model: string
   messages: ChatMessage[]
   onToken: (text: string) => void
   signal?: AbortSignal
+  stop?: string[]
+  maxTokens?: number
 }): Promise<void> {
   const modelName = opts.model.replace(/^ollama\//, '')
+  const options: Record<string, unknown> = {}
+  if (opts.stop) options.stop = opts.stop
+  if (opts.maxTokens) options.num_predict = opts.maxTokens
 
   let res: Response
   try {
     res = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modelName, messages: opts.messages, stream: true }),
+      body: JSON.stringify({ model: modelName, messages: opts.messages, stream: true, options }),
       signal: opts.signal,
     })
   } catch {

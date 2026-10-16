@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { Block } from '../lib/agent/types'
 
 export type ChatStyle = 'classic' | 'liquid'
 export type AgentMode = 'agent' | 'plan' | 'debug' | 'ask'
@@ -28,6 +29,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
+  blocks?: Block[]
 }
 
 export interface DiffHunk {
@@ -82,6 +84,7 @@ interface AppState {
   // Actions: AI
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => string
   updateMessage: (id: string, update: (prev: string) => string) => void
+  patchMessage: (id: string, patch: (m: ChatMessage) => ChatMessage) => void
   clearMessages: () => void
   setGenerating: (v: boolean) => void
   setModel: (model: string) => void
@@ -195,6 +198,11 @@ export const useAppStore = create<AppState>()(
         set({ messages: [...get().messages, { ...msg, id, timestamp: Date.now() }] })
         return id
       },
+
+      patchMessage: (id, patch) =>
+        set({
+          messages: get().messages.map((m) => (m.id === id ? patch(m) : m)),
+        }),
 
       updateMessage: (id, update) =>
         set({

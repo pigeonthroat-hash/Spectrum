@@ -1,40 +1,32 @@
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore, type AgentMode } from '../store/useAppStore'
+import { useAppStore } from '../store/useAppStore'
 import { Loader2, Sparkles, Check, X } from 'lucide-react'
 import { ChatInput } from './ChatInput'
-import { streamOllamaChat, type ChatMessage } from '../lib/providers/ollama'
-import { streamBrowserAI } from '../lib/ai/webllm'
+import { ToolBlock } from './ToolBlock'
+import { runAgent } from '../lib/agent/runAgent'
+import { plainText, type Block } from '../lib/agent/types'
+import { errorText } from '../lib/errors'
 
-const MAX_CONTEXT_CHARS = 12000
-
-const BASE_PROMPT =
-  'You are Spectrum, a coding assistant inside a code editor. Be concise and practical. Use code blocks for code.'
-
-const MODE_PROMPTS: Record<AgentMode, string> = {
-  agent: 'Help the user complete the task. Show the code changes you would make.',
-  plan: 'Break the task into a short numbered plan before writing any code.',
-  debug: 'Find the most likely root cause of the problem, explain why, then suggest a minimal fix.',
-  ask: 'Answer the question clearly. Do not propose file edits.',
-}
+// Only the last few messages are sent to the model, to keep requests small
+const HISTORY_TURNS = 6
 
 export function AISidebar() {
-  const {
-    messages,
-    addMessage,
-    updateMessage,
-    isGenerating,
-    setGenerating,
-    selectedModel,
-    setModel,
-    mode,
-    setMode,
-    pendingDiffs,
-    acceptAllDiffs,
-    rejectAllDiffs,
-    activeTabPath,
-    openTabs,
-    chatStyle,
-  } = useAppStore()
+  const messages = useAppStore((s) => s.messages)
+  const addMessage = useAppStore((s) => s.addMessage)
+  const patchMessage = useAppStore((s) => s.patchMessage)
+  const isGenerating = useAppStore((s) => s.isGenerating)
+  const setGenerating = useAppStore((s) => s.setGenerating)
+  const selectedModel = useAppStore((s) => s.selectedModel)
+  const setModel = useAppStore((s) => s.setModel)
+  const mode = useAppStore((s) => s.mode)
+  const setMode = useAppStore((s) => s.setMode)
+  const pendingDiffs = useAppStore((s) => s.pendingDiffs)
+  const acceptAllDiffs = useAppStore((s) => s.acceptAllDiffs)
+  const rejectAllDiffs = useAppStore((s) => s.rejectAllDiffs)
+  const activeTabPath = useAppStore((s) => s.activeTabPath)
+  const openTabs = useAppStore((s) => s.openTabs)
+  const chatStyle = useAppStore((s) => s.chatStyle)
+  const projectId = useAppStore((s) => s.projectId)
 
   const [input, setInput] = useState('')
   const [useFile, setUseFile] = useState(true)
@@ -46,44 +38,39 @@ export function AISidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const buildSystemPrompt = (): ChatMessage => {
-    let content = `${BASE_PROMPT}\n\nMode: ${MODE_PROMPTS[mode]}`
-    if (useFile && activeFile) {
-      content += `\n\nThe user has this file open: ${activeFile.name}\n\`\`\`\n${activeFile.content.slice(0, MAX_CONTEXT_CHARS)}\n\`\`\``
-    }
-    return { role: 'system', content }
-  }
-
   const handleSend = async () => {
     const text = input.trim()
     if (!text || isGenerating) return
     setInput('')
 
-    const history: ChatMessage[] = messages
-      .filter((m) => m.content)
-      .map((m) => ({ role: m.role, content: m.content }))
-    const prompt: ChatMessage[] = [buildSystemPrompt(), ...history, { role: 'user', content: text }]
+    // Earlier turns as plain text only (tool rows are left out to save space)
+    const history = messages.slice(-HISTORY_TURNS).map((m) => ({
+      role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.role === 'user' ? m.content : plainText(m.blocks) || m.content,
+    })).filter((t) => t.content)
 
     addMessage({ role: 'user', content: text })
-    const assistantId = addMessage({ role: 'assistant', content: '' })
+    const assistantId = addMessage({ role: 'assistant', content: '', blocks: [] })
     setGenerating(true)
 
+    const setBlocks = (update: (blocks: Block[]) => Block[]) =>
+      patchMessage(assistantId, (m) => {
+        const blocks = update(m.blocks ?? [])
+        return { ...m, blocks, content: plainText(blocks) }
+      })
+
     try {
-      const onToken = (token: string) => updateMessage(assistantId, (prev) => prev + token)
-      if (selectedModel.startsWith('browser/')) {
-        await streamBrowserAI({
-          modelId: selectedModel.slice('browser/'.length),
-          messages: prompt,
-          onToken,
-        })
-      } else if (selectedModel.startsWith('ollama/')) {
-        await streamOllamaChat({ model: selectedModel, messages: prompt, onToken })
-      } else {
-        throw new Error('This model is not connected yet. Pick a browser or Ollama model.')
-      }
+      await runAgent({
+        projectId,
+        modelId: selectedModel,
+        mode,
+        history,
+        userText: text,
+        activeFileName: useFile && activeFile ? activeFile.name : null,
+        setBlocks,
+      })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong'
-      updateMessage(assistantId, (prev) => (prev ? `${prev}\n\n[Error: ${msg}]` : `[Error: ${msg}]`))
+      setBlocks((bs) => [...bs, { type: 'text', text: `[Error: ${errorText(err)}]` }])
     } finally {
       setGenerating(false)
     }
@@ -120,25 +107,49 @@ export function AISidebar() {
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
             <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
             <p className="text-xs max-w-[220px]">
-              Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install needed.
+              Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install
+              needed.
             </p>
           </div>
         )}
 
-        {messages.map((msg) =>
-          msg.role === 'user' ? (
-            <div
-              key={msg.id}
-              className="rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
-            >
-              {msg.content}
-            </div>
-          ) : (
-            <div key={msg.id} className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
-              {msg.content || <Loader2 size={14} className="animate-spin text-[#8b949e]" />}
+        {messages.map((msg, i) => {
+          if (msg.role === 'user') {
+            return (
+              <div
+                key={msg.id}
+                className="rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
+              >
+                {msg.content}
+              </div>
+            )
+          }
+          const pending = isGenerating && i === messages.length - 1
+          const blocks: Block[] = msg.blocks?.length
+            ? msg.blocks
+            : msg.content
+              ? [{ type: 'text', text: msg.content }]
+              : []
+          if (blocks.length === 0) {
+            return pending ? <Loader2 key={msg.id} size={14} className="animate-spin text-[#8b949e]" /> : null
+          }
+          return (
+            <div key={msg.id} className="space-y-2 text-sm text-[#e6edf3]">
+              {blocks.map((b, j) =>
+                b.type === 'text' ? (
+                  b.text.trim() ? (
+                    <div key={j} className="whitespace-pre-wrap leading-relaxed">
+                      {b.text.trim()}
+                    </div>
+                  ) : null
+                ) : (
+                  <ToolBlock key={b.id} block={b} />
+                )
+              )}
+              {pending && <Loader2 size={12} className="animate-spin text-[#8b949e]" />}
             </div>
           )
-        )}
+        })}
         <div ref={messagesEndRef} />
       </div>
 

@@ -92,12 +92,16 @@ export async function streamBrowserAI(opts: {
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
   onToken: (text: string) => void
   signal?: AbortSignal
+  stop?: string[]
+  maxTokens?: number
 }): Promise<void> {
   try {
     const eng = await ensureModel(opts.modelId)
     const stream = await eng.chat.completions.create({
       messages: opts.messages as ChatCompletionMessageParam[],
       stream: true,
+      stop: opts.stop,
+      max_tokens: opts.maxTokens,
     })
     for await (const chunk of stream) {
       if (opts.signal?.aborted) {
