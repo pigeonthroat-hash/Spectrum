@@ -9,7 +9,7 @@ import { errorText } from '../errors'
 
 const MAX_STEPS = 8
 const MAX_RESULT_CHARS = 4000
-const STOP = ['</tool>', '</python>']
+const STOP = ['</tool', '</python']
 const FLUSH_MS = 80
 
 type Setter = (update: (blocks: Block[]) => Block[]) => void
@@ -43,7 +43,14 @@ function findCall(text: string): Call | null {
   if (!best) return null
   const start = best.idx + best.open.length
   const end = text.indexOf(best.close, start)
-  const raw = (end >= 0 ? text.slice(start, end) : text.slice(start)).trim()
+  let raw: string
+  if (end >= 0) {
+    raw = text.slice(start, end)
+  } else {
+    // No full closing tag. Drop a partial one such as "</python" at the end.
+    raw = text.slice(start).replace(/<\/?[a-z]*$/i, '')
+  }
+  raw = raw.trim()
   const body = best.kind === 'python' ? stripFences(raw) : raw
   return {
     kind: best.kind,
