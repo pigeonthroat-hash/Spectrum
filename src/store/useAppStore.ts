@@ -120,7 +120,7 @@ export const useAppStore = create<AppState>()(
 
       messages: [],
       isGenerating: false,
-      selectedModel: 'ollama/gemma4:e4b',
+      selectedModel: 'browser/Llama-3.2-3B-Instruct-q4f16_1-MLC',
       mode: 'agent',
       pendingDiffs: [],
 
