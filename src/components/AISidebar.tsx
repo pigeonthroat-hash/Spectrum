@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { Loader2, Sparkles, Check, X, File } from 'lucide-react'
+import { Loader2, Sparkles, Check, X, File, Square } from 'lucide-react'
 import { ChatInput } from './ChatInput'
 import { ToolBlock } from './ToolBlock'
 import { runAgent } from '../lib/agent/runAgent'
@@ -9,6 +9,7 @@ import { errorText } from '../lib/errors'
 import { listPaths } from '../lib/agent/tools'
 import { storageFor } from '../lib/storage/active'
 import { MessageContent } from './MessageContent'
+import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 
 // Only the last few messages are sent to the model, to keep requests small
 const HISTORY_TURNS = 6
@@ -35,6 +36,24 @@ async function attachMentions(text: string, projectId: string | null): Promise<s
   return parts.length ? `${text}\n\n${parts.join('\n\n')}` : text
 }
 
+// Turns technical errors into a message the user can act on
+function friendlyError(err: unknown): string {
+  const raw = errorText(err)
+  if (/ollama/i.test(raw) && /reach|connect|fetch/i.test(raw)) {
+    return "Ollama isn't running. Start Ollama, or pick a Groq model."
+  }
+  if (/device lost|mapAsync|Instance reference|GPU/i.test(raw)) {
+    return 'The browser lost its graphics connection while the model was running. This usually means the model is too big for this computer. Try a smaller model, or a Groq model.'
+  }
+  if (/out of memory|OOM/i.test(raw)) {
+    return 'This computer ran out of memory for the model. Close other apps, or pick a smaller model.'
+  }
+  if (/quota/i.test(raw)) {
+    return 'Not enough browser storage for this model. Free up disk space, or pick a smaller model.'
+  }
+  return raw
+}
+
 export function AISidebar() {
   const messages = useAppStore((s) => s.messages)
   const addMessage = useAppStore((s) => s.addMessage)
@@ -57,8 +76,19 @@ export function AISidebar() {
   const [useFile, setUseFile] = useState(true)
   const [filePaths, setFilePaths] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Controller for the reply in progress; Stop calls abort() on it
+  const abortRef = useRef<AbortController | null>(null)
 
   const activeFile = openTabs.find((t) => t.path === activeTabPath) ?? null
+
+  // A saved model that is no longer in the list is replaced with a working Groq model
+  useEffect(() => {
+    const knownLocal = LOCAL_MODELS.some((m) => m.id === selectedModel)
+    const knownGroq = GROQ_MODELS.some((m) => m.id === selectedModel)
+    if ((selectedModel.startsWith('browser/') && !knownLocal) || (selectedModel.startsWith('groq/') && !knownGroq)) {
+      setModel(GROQ_MODELS[0].id)
+    }
+  }, [selectedModel, setModel])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -98,6 +128,9 @@ export function AISidebar() {
         return { ...m, blocks, content: plainText(blocks) }
       })
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       await runAgent({
         projectId,
@@ -107,13 +140,20 @@ export function AISidebar() {
         userText: await attachMentions(text, projectId),
         activeFileName: useFile && activeFile ? activeFile.name : null,
         setBlocks,
+        signal: controller.signal,
       })
+      if (controller.signal.aborted) {
+        setBlocks((bs) => [...bs, { type: 'text', text: '[Stopped]' }])
+      }
     } catch (err) {
-      setBlocks((bs) => [...bs, { type: 'text', text: `[Error: ${errorText(err)}]` }])
+      setBlocks((bs) => [...bs, { type: 'text', text: `[Error: ${friendlyError(err)}]` }])
     } finally {
+      abortRef.current = null
       setGenerating(false)
     }
   }
+
+  const stopGenerating = () => abortRef.current?.abort()
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117]">
@@ -149,6 +189,12 @@ export function AISidebar() {
               Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install
               needed.
             </p>
+            {selectedModel.startsWith('groq/') && (
+              <p className="text-[11px] max-w-[240px] text-[#8b949e]">
+                Groq models are run by Groq. Your messages and any @-mentioned files are sent to Groq to generate
+                replies.
+              </p>
+            )}
           </div>
         )}
 
@@ -196,6 +242,22 @@ export function AISidebar() {
         })}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Stop bar, shown while a reply is being written */}
+      {isGenerating && (
+        <div className="px-3 py-1.5 border-t border-[#30363d] flex items-center justify-between text-xs text-[#8b949e] shrink-0">
+          <span className="flex items-center gap-1.5">
+            <Loader2 size={12} className="animate-spin" /> Working...
+          </span>
+          <button
+            type="button"
+            onClick={stopGenerating}
+            className="flex items-center gap-1 px-2 py-1 rounded border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d]"
+          >
+            <Square size={11} /> Stop
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <ChatInput
