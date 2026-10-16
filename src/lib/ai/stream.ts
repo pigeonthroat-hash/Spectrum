@@ -1,7 +1,7 @@
 import { streamBrowserAI } from './webllm'
 import { streamOllamaChat } from '../providers/ollama'
 import { streamOpenAICompatible } from '../providers/openaiCompatible'
-import { getApiKey } from '../providers/keys'
+import { GROQ_PROXY_URL, getSignedInToken } from '../providers/groqProxy'
 
 export interface TurnMessage {
   role: 'system' | 'user' | 'assistant'
@@ -38,11 +38,9 @@ export async function streamModel(opts: {
     })
   }
   if (opts.modelId.startsWith('groq/')) {
-    const apiKey = getApiKey('groq')
-    if (!apiKey) throw new Error('Add your Groq API key first. See the test steps.')
     return streamOpenAICompatible({
-      baseUrl: 'https://api.groq.com/openai/v1',
-      apiKey,
+      baseUrl: GROQ_PROXY_URL,
+      apiKey: await getSignedInToken(),
       providerName: 'Groq',
       model: opts.modelId.slice('groq/'.length),
       messages: opts.messages,
@@ -52,5 +50,5 @@ export async function streamModel(opts: {
       maxTokens: opts.maxTokens,
     })
   }
-  throw new Error('This model is not connected yet. Pick a browser or Ollama model.')
+  throw new Error('This model is not connected yet. Pick a browser, Ollama, or Groq model.')
 }

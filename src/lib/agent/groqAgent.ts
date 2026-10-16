@@ -7,12 +7,11 @@ import { loadMemory } from './memory'
 import { MODE_HINTS } from './protocol'
 import { runPython } from '../python/pyRunner'
 import { errorText } from '../errors'
-import { getApiKey } from '../providers/keys'
+import { GROQ_PROXY_URL, getSignedInToken } from '../providers/groqProxy'
 import type { TurnMessage } from '../ai/stream'
 
 const MAX_STEPS = 8
 const MAX_RESULT_CHARS = 4000
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 type Setter = (update: (blocks: Block[]) => Block[]) => void
 
@@ -152,7 +151,7 @@ function appendText(blocks: Block[], delta: string): Block[] {
 async function callGroq(apiKey: string, model: string, messages: ApiMessage[]) {
   let res: Response
   try {
-    res = await fetch(GROQ_URL, {
+    res = await fetch(`${GROQ_PROXY_URL}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model, messages, tools: TOOL_SPECS, tool_choice: 'auto', max_tokens: 2000 }),
@@ -224,8 +223,7 @@ export async function runGroqAgent(opts: {
   setBlocks: Setter
 }): Promise<void> {
   const { projectId, setBlocks } = opts
-  const apiKey = getApiKey('groq')
-  if (!apiKey) throw new Error('Add your Groq API key first. See the test steps.')
+  const apiKey = await getSignedInToken()
   const model = opts.modelId.slice('groq/'.length)
 
   const memory = projectId ? loadMemory(projectId) : []
