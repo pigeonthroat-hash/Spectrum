@@ -3,6 +3,7 @@ import { useAppStore, type AgentMode } from '../store/useAppStore'
 import { Loader2, Sparkles, Check, X } from 'lucide-react'
 import { ChatInput } from './ChatInput'
 import { streamOllamaChat, type ChatMessage } from '../lib/providers/ollama'
+import { streamBrowserAI } from '../lib/ai/webllm'
 
 const MAX_CONTEXT_CHARS = 12000
 
@@ -68,14 +69,18 @@ export function AISidebar() {
     setGenerating(true)
 
     try {
-      if (!selectedModel.startsWith('ollama/')) {
-        throw new Error('Only local Ollama models are connected so far. Pick one of the "local" models.')
+      const onToken = (token: string) => updateMessage(assistantId, (prev) => prev + token)
+      if (selectedModel.startsWith('browser/')) {
+        await streamBrowserAI({
+          modelId: selectedModel.slice('browser/'.length),
+          messages: prompt,
+          onToken,
+        })
+      } else if (selectedModel.startsWith('ollama/')) {
+        await streamOllamaChat({ model: selectedModel, messages: prompt, onToken })
+      } else {
+        throw new Error('This model is not connected yet. Pick a browser or Ollama model.')
       }
-      await streamOllamaChat({
-        model: selectedModel,
-        messages: prompt,
-        onToken: (token) => updateMessage(assistantId, (prev) => prev + token),
-      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       updateMessage(assistantId, (prev) => (prev ? `${prev}\n\n[Error: ${msg}]` : `[Error: ${msg}]`))
@@ -115,7 +120,7 @@ export function AISidebar() {
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
             <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
             <p className="text-xs max-w-[220px]">
-              Ask a question, plan a change, or debug an error. Local models run through Ollama on your machine.
+              Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install needed.
             </p>
           </div>
         )}
