@@ -6,6 +6,7 @@ import { loadMemory } from './memory'
 import { streamModel, type TurnMessage } from '../ai/stream'
 import { runPython } from '../python/pyRunner'
 import { errorText } from '../errors'
+import { runGroqAgent } from './groqAgent'
 
 const MAX_STEPS = 8
 const MAX_RESULT_CHARS = 4000
@@ -118,6 +119,9 @@ export async function runAgent(opts: {
   activeFileName: string | null
   setBlocks: Setter
 }): Promise<void> {
+  // Groq models use native tool calling (see groqAgent.ts). Everything else uses the text-tag loop below.
+  if (opts.modelId.startsWith('groq/')) return runGroqAgent(opts)
+
   const { projectId, setBlocks } = opts
   const memory = projectId ? loadMemory(projectId) : []
   const files = projectId ? await listPaths(projectId).catch(() => [] as string[]) : []
