@@ -106,7 +106,7 @@ export function ModelPicker({ value, onChange, placement = 'down' }: ModelPicker
                     <span className="text-[9px] px-1 rounded bg-[#1f6feb] text-white">NEW</span>
                   )}
                   <span className="text-[9px] text-[#8b949e]">
-                    {m.provider === 'ollama' ? 'local' : 'free'}
+                    {m.provider === 'browser' ? 'browser' : m.provider === 'ollama' ? 'local' : 'free'}
                   </span>
                   {m.id === value && <Check size={12} className="text-[#3fb950]" />}
                 </span>
