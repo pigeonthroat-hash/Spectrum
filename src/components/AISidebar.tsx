@@ -1,14 +1,39 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { Loader2, Sparkles, Check, X } from 'lucide-react'
+import { Loader2, Sparkles, Check, X, File } from 'lucide-react'
 import { ChatInput } from './ChatInput'
 import { ToolBlock } from './ToolBlock'
 import { runAgent } from '../lib/agent/runAgent'
 import { plainText, type Block } from '../lib/agent/types'
 import { errorText } from '../lib/errors'
+import { listPaths } from '../lib/agent/tools'
+import { storageFor } from '../lib/storage/active'
+import { MessageContent } from './MessageContent'
 
 // Only the last few messages are sent to the model, to keep requests small
 const HISTORY_TURNS = 6
+
+// Files mentioned with @ are read and added to what the model sees (the chat bubble still shows only the typed text)
+const MAX_MENTIONED_FILES = 3
+const MAX_MENTIONED_CHARS = 8000
+
+async function attachMentions(text: string, projectId: string | null): Promise<string> {
+  if (!projectId) return text
+  const mentioned = [...new Set([...text.matchAll(/(?:^|\s)@([^\s@]+)/g)].map((m) => m[1]))]
+  if (mentioned.length === 0) return text
+  const known = new Set(await listPaths(projectId))
+  const storage = storageFor(projectId)
+  const parts: string[] = []
+  for (const path of mentioned.filter((p) => known.has(p)).slice(0, MAX_MENTIONED_FILES)) {
+    try {
+      const content = await storage.readFile(path)
+      parts.push(`File ${path}:\n${content.slice(0, MAX_MENTIONED_CHARS)}`)
+    } catch {
+      // A file that can't be read is skipped
+    }
+  }
+  return parts.length ? `${text}\n\n${parts.join('\n\n')}` : text
+}
 
 export function AISidebar() {
   const messages = useAppStore((s) => s.messages)
@@ -30,6 +55,7 @@ export function AISidebar() {
 
   const [input, setInput] = useState('')
   const [useFile, setUseFile] = useState(true)
+  const [filePaths, setFilePaths] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const activeFile = openTabs.find((t) => t.path === activeTabPath) ?? null
@@ -37,6 +63,15 @@ export function AISidebar() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Refresh the file list for the @ menu when the project or the chat changes (the agent may have created files)
+  useEffect(() => {
+    if (!projectId) {
+      setFilePaths([])
+      return
+    }
+    listPaths(projectId).then(setFilePaths).catch(() => setFilePaths([]))
+  }, [projectId, messages.length])
 
   const handleSend = async () => {
     const text = input.trim()
@@ -49,7 +84,11 @@ export function AISidebar() {
       content: m.role === 'user' ? m.content : plainText(m.blocks) || m.content,
     })).filter((t) => t.content)
 
-    addMessage({ role: 'user', content: text })
+    addMessage({
+      role: 'user',
+      content: text,
+      fileName: useFile && activeFile ? activeFile.name : undefined,
+    })
     const assistantId = addMessage({ role: 'assistant', content: '', blocks: [] })
     setGenerating(true)
 
@@ -65,7 +104,7 @@ export function AISidebar() {
         modelId: selectedModel,
         mode,
         history,
-        userText: text,
+        userText: await attachMentions(text, projectId),
         activeFileName: useFile && activeFile ? activeFile.name : null,
         setBlocks,
       })
@@ -118,9 +157,16 @@ export function AISidebar() {
             return (
               <div
                 key={msg.id}
-                className="rounded-lg border border-[#30363d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
+                className="rounded-md border border-[#30363d] bg-[#1c2128] px-3 py-2.5 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
               >
-                {msg.content}
+                {msg.fileName && (
+                  <span className="mb-2 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-[#30363d]/60 text-xs text-[#c9d1d9]">
+                    <File size={11} className="text-[#8b949e]" />
+                    {msg.fileName}
+                    <span className="text-[#8b949e]">Current File</span>
+                  </span>
+                )}
+                <div>{msg.content}</div>
               </div>
             )
           }
@@ -138,9 +184,7 @@ export function AISidebar() {
               {blocks.map((b, j) =>
                 b.type === 'text' ? (
                   b.text.trim() ? (
-                    <div key={j} className="whitespace-pre-wrap leading-relaxed">
-                      {b.text.trim()}
-                    </div>
+                    <MessageContent key={j} text={b.text.trim()} />
                   ) : null
                 ) : (
                   <ToolBlock key={b.id} block={b} />
@@ -167,6 +211,7 @@ export function AISidebar() {
         onToggleFile={() => setUseFile((v) => !v)}
         selectedModel={selectedModel}
         onModelChange={setModel}
+        filePaths={filePaths}
       />
     </div>
   )

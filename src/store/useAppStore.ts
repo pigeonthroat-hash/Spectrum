@@ -30,6 +30,7 @@ export interface ChatMessage {
   content: string
   timestamp: number
   blocks?: Block[]
+  fileName?: string // the open file when the message was sent (shown as a chip)
 }
 
 export interface DiffHunk {
