@@ -67,3 +67,12 @@ html, body, #root {
 .liquid-glass textarea {
   background: transparent;
 }
+
+/* On phones, inputs must be 16px or larger, or the browser zooms in when they are tapped */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
