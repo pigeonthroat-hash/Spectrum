@@ -58,6 +58,7 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
   const dragging = useDragStore((s) => s.item?.kind === 'file' && s.item.path === node.path)
 
   const isFolder = node.type === 'folder'
+  const projectId = useAppStore((s) => s.projectId)
   const isOpen = isFolder && !collapsed.has(node.path)
   const isActive = activeTabPath === node.path
 
@@ -66,6 +67,17 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
       <div
         data-node-path={node.path}
         data-node-folder={isFolder ? 'true' : 'false'}
+        onDragOver={(e) => {
+          if (!isFolder || !e.dataTransfer.types.includes('Files')) return
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        onDrop={(e) => {
+          if (!isFolder || !e.dataTransfer.types.includes('Files') || !projectId) return
+          e.preventDefault()
+          e.stopPropagation()
+          void uploadFiles(Array.from(e.dataTransfer.files), projectId, node.path)
+        }}
         onContextMenu={(e) => {
           if (!isFolder) return
           e.preventDefault()
@@ -346,6 +358,12 @@ export function FileExplorer() {
   return (
     <div
       className="h-full flex flex-col bg-[#0d1117]"
+      onContextMenu={(e) => {
+        // Right-click on empty space (not on a file or folder row) runs the whole project
+        if ((e.target as HTMLElement).closest('[data-node-path]') || !projectId) return
+        e.preventDefault()
+        useFolderMenu.getState().open(e.clientX, e.clientY, '')
+      }}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) e.preventDefault()
       }}

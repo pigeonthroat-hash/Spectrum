@@ -6,11 +6,12 @@ import { errorText } from '../errors'
 import { toJxlIfSmaller } from './jxl'
 import { isUploadImage } from './kinds'
 
-// Uploads files into the project root. PNG and JPEG images become JPEG XL when that makes them smaller.
-export async function uploadFiles(files: File[], projectId: string): Promise<void> {
+// Uploads files into a folder (default: the project root). PNG and JPEG images become JPEG XL when that makes them smaller.
+export async function uploadFiles(files: File[], projectId: string, folder = ''): Promise<void> {
   const storage = storageFor(projectId)
   const existing = new Set(await listPaths(projectId))
   const problems: string[] = []
+  const prefix = folder ? folder + '/' : ''
 
   for (const file of files) {
     try {
@@ -18,13 +19,13 @@ export async function uploadFiles(files: File[], projectId: string): Promise<voi
         problems.push(file.name + ' is larger than 10 MB.')
         continue
       }
-      let name = file.name
+      let name = prefix + file.name
       let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer())
       if (isUploadImage(file.name)) {
         const jxl = await toJxlIfSmaller(bytes, file.type || 'image/png')
         if (jxl) {
           bytes = jxl
-          name = file.name.replace(/\.[^.]+$/, '') + '.jxl'
+          name = prefix + file.name.replace(/\.[^.]+$/, '') + '.jxl'
         }
       }
       if (existing.has(name)) {

@@ -131,7 +131,7 @@ function CollapsedStrip({ id, side }: { id: PanelId; side: 'left' | 'right' }) {
     <button
       onClick={() => setCollapsed(id, false)}
       title={`Expand ${TITLE[id]}`}
-      className="w-7 shrink-0 h-full flex flex-col items-center gap-3 py-3 bg-[#161b22] border-x border-[#30363d] text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+      className="anim-slide-left w-7 shrink-0 h-full flex flex-col items-center gap-3 py-3 bg-[#161b22] border-x border-[#30363d] text-[#8b949e] hover:text-white hover:bg-[#21262d]"
     >
       <Icon size={14} />
       <span className="text-[11px] uppercase tracking-wider" style={{ writingMode: 'vertical-rl' }}>

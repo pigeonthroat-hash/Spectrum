@@ -1,9 +1,12 @@
+import { useAttachments } from '../lib/chat/attachments'
+import { useToolToggles } from '../lib/tools/toggles'
+import { TOOLS } from '../lib/tools/registry'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { AtSign, File, Image as ImageIcon, Plus, Send, X } from 'lucide-react'
 import { LiquidGlassBox } from './LiquidGlassBox'
 import { ModelPicker } from './ModelPicker'
 import { ModePicker } from './ModePicker'
-import { MentionMenu } from './MentionMenu'
+import { MentionMenu, type MenuView } from './MentionMenu'
 import type { AgentMode, ChatStyle } from '../store/useAppStore'
 
 interface ChatInputProps {
@@ -41,6 +44,12 @@ export function ChatInput({
   const isLiquid = style === 'liquid'
   const hasFile = fileName !== null
   const [highlight, setHighlight] = useState(0)
+  const [menuView, setMenuView] = useState<MenuView>('root')
+  const enabledTools = useToolToggles((s) => s.enabled)
+  const attached = useAttachments((s) => s.files)
+  const attachFile = useAttachments((s) => s.add)
+  const detachFile = useAttachments((s) => s.remove)
+  const toggleTool = useToolToggles((s) => s.toggle)
 
   // An "@" starts a mention when it is at the start or after a space.
   // The text after it is the search.
@@ -49,8 +58,11 @@ export function ChatInput({
   const matches =
     query === null
       ? []
-      : filePaths.filter((p) => p.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+      : filePaths.filter((p) => p.toLowerCase().includes(query.toLowerCase())).slice(0, 50)
   const menuOpen = query !== null
+  const optionalTools = TOOLS.filter((t) => t.optional)
+  // Arrow keys and Enter pick files only where the file list is showing
+  const filesNavigable = menuOpen && (menuView === 'files' || (menuView === 'root' && query !== ''))
 
   useEffect(() => {
     setHighlight(0)
@@ -64,15 +76,17 @@ export function ChatInput({
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [value])
 
+  // Picking a file removes the @ text and adds the file as a chip
   const pickFile = (path: string) => {
     if (query === null) return
-    const base = value.slice(0, value.length - query.length - 1)
-    onChange(`${base}@${path} `)
+    onChange(value.slice(0, value.length - query.length - 1))
+    attachFile(path)
+    setMenuView('root')
     textareaRef.current?.focus()
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (menuOpen && matches.length > 0) {
+    if (filesNavigable && matches.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setHighlight((h) => (h + 1) % matches.length)
@@ -108,7 +122,7 @@ export function ChatInput({
   const content = (
     <div className="flex flex-col gap-1">
       {/* Top row: + button, plus the current file chip when there is one */}
-      <div className="flex items-center gap-1.5 min-h-[22px]">
+      <div className="flex flex-wrap items-center gap-1.5 min-h-[22px]">
         <button
           type="button"
           disabled
@@ -136,6 +150,29 @@ export function ChatInput({
             + Current File
           </button>
         )}
+        {attached.map((path) => (
+          <span
+            key={'file-' + path}
+            className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-xs text-[#e6edf3]"
+          >
+            <File size={11} className="text-[#8b949e] shrink-0" />
+            <span className="truncate max-w-[160px]">{path.split('/').pop()}</span>
+            <button type="button" onClick={() => detachFile(path)} title="Remove" className="text-[#8b949e] hover:text-white">
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+        {enabledTools.map((name) => (
+          <span
+            key={'tool-' + name}
+            className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-[11px] text-[#c9d1d9]"
+          >
+            {name}
+            <button type="button" onClick={() => toggleTool(name)} title="Turn off" className="text-[#8b949e] hover:text-white">
+              <X size={10} />
+            </button>
+          </span>
+        ))}
       </div>
 
       {/* Text input */}
@@ -177,7 +214,20 @@ export function ChatInput({
 
   return (
     <div className="relative p-2 border-t border-[#30363d] shrink-0">
-      {menuOpen && <MentionMenu paths={matches} highlight={highlight} onPick={pickFile} onHover={setHighlight} />}
+      {menuOpen && (
+        <MentionMenu
+          view={menuView}
+          setView={setMenuView}
+          query={query ?? ''}
+          files={matches}
+          highlight={highlight}
+          onPick={pickFile}
+          onHover={setHighlight}
+          optionalTools={optionalTools}
+          enabled={enabledTools}
+          onToggleTool={toggleTool}
+        />
+      )}
       {isLiquid ? (
         <LiquidGlassBox>{content}</LiquidGlassBox>
       ) : (

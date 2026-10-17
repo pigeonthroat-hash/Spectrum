@@ -1,9 +1,11 @@
 import { storageFor } from '../storage/active'
+import { cachedText, rememberText } from './readCache'
 import type { FileNode } from '../storage/types'
 import { addMemory, removeMemory } from './memory'
 import { useAppStore } from '../../store/useAppStore'
 import { isAutoApplyOn } from './autoApply'
 import { waitForDecision } from './decisions'
+import { runRegistryTool } from '../tools/registry'
 
 const MAX_TOOL_OUTPUT = 8000
 
@@ -84,7 +86,9 @@ export async function executeTool(
     }
     case 'read_file': {
       const path = String(args.path ?? '')
-      const text = await storageFor(need(projectId)).readFile(path)
+      const hit = cachedText(path)
+      const text = hit ?? (await storageFor(need(projectId)).readFile(path))
+      if (hit === undefined) rememberText(path, text)
       return readLines(text, args.start, args.end).slice(0, MAX_TOOL_OUTPUT)
     }
     case 'search_files':
@@ -146,6 +150,27 @@ export async function executeTool(
       if (outcome === 'declined') return `The user declined the change to ${path}.`
       return `The change to ${path} was cancelled.`
     }
+    case 'write_file': {
+      // Full rewrite of an existing file. Goes through the same review as edit_file.
+      const path = String(args.path ?? '').trim()
+      const original = await storageFor(need(projectId)).readFile(path)
+      const modified = String(args.content ?? '')
+      const store = useAppStore.getState()
+      store.setPendingDiffs([...store.pendingDiffs.filter((d) => d.path !== path), { path, original, modified }])
+      if (!store.openTabs.some((t) => t.path === path)) {
+        store.openFile(path, path.split('/').pop() ?? path, original)
+      } else {
+        store.setActiveTab(path)
+      }
+      if (isAutoApplyOn()) {
+        useAppStore.getState().acceptDiff(path)
+        return `Applied the change to ${path}. Continue with the next step.`
+      }
+      const outcome = await waitForDecision(path, 'edit')
+      if (outcome === 'applied') return `Applied the change to ${path}.`
+      if (outcome === 'declined') return `The user declined the change to ${path}.`
+      return `The change to ${path} was cancelled.`
+    }
     case 'remember':
       addMemory(memoryId, String(args.note ?? ''))
       return 'Saved the note.'
@@ -154,8 +179,6 @@ export async function executeTool(
       return `Removed ${removed} note(s).`
     }
     default:
-      throw new Error(
-        `Unknown tool "${name}". Use one of: list_files, read_file, search_files, create_file, remember, forget.`
-      )
+      return runRegistryTool(projectId, name, args)
   }
 }

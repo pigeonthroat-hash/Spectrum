@@ -1,3 +1,4 @@
+import { useAttachments } from '../lib/chat/attachments'
 import { isBinaryName } from '../lib/files/kinds'
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
@@ -22,9 +23,10 @@ const HISTORY_TURNS = 6
 const MAX_MENTIONED_FILES = 3
 const MAX_MENTIONED_CHARS = 8000
 
-async function attachMentions(text: string, projectId: string | null): Promise<string> {
+async function attachMentions(text: string, projectId: string | null, extra: string[] = []): Promise<string> {
   if (!projectId) return text
   const mentioned = [...new Set([...text.matchAll(/(?:^|\s)@([^\s@]+)/g)].map((m) => m[1]))]
+  for (const p of extra) if (!mentioned.includes(p)) mentioned.push(p)
   if (mentioned.length === 0) return text
   const known = new Set(await listPaths(projectId))
   const storage = storageFor(projectId)
@@ -107,7 +109,9 @@ export function AISidebar() {
 
   const handleSend = async () => {
     const text = input.trim()
-    if (!text || isGenerating) return
+    const attachedPaths = useAttachments.getState().files
+    if ((!text && attachedPaths.length === 0) || isGenerating) return
+    useAttachments.getState().clear()
     setInput('')
 
     // Earlier turns as plain text only (tool rows are left out to save space)
@@ -140,7 +144,7 @@ export function AISidebar() {
         modelId: selectedModel,
         mode,
         history,
-        userText: await attachMentions(text, projectId),
+        userText: await attachMentions(text, projectId, attachedPaths),
         activeFileName: useFile && activeFile ? activeFile.name : null,
         setBlocks,
         signal: controller.signal,
@@ -236,7 +240,7 @@ export function AISidebar() {
               {blocks.map((b, j) =>
                 b.type === 'text' ? (
                   b.text.trim() ? (
-                    <MessageContent key={j} text={b.text.trim()} />
+                    <div key={j} className="anim-fade-up"><MessageContent text={b.text.trim()} /></div>
                   ) : null
                 ) : (
                   <ToolBlock key={b.id} block={b} />

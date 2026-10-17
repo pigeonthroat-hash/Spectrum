@@ -1,53 +1,236 @@
-import { File } from 'lucide-react'
+import { useState } from 'react'
+import { Check, ChevronLeft, ChevronRight, Copy, File, Globe, Image, Plug, Search, Terminal, Trash2, BookOpen, Wrench } from 'lucide-react'
 import { cn } from '../lib/utils'
+import type { ToolDef } from '../lib/tools/registry'
 
-// Popup above the chat input that lists project files when you type "@"
+export type MenuView = 'root' | 'files' | 'tools'
+
+type Icon = typeof Globe
+
+const TOOL_ICONS: Record<string, Icon> = {
+  web_search: Globe,
+  web_fetch: Globe,
+  generate_image: Image,
+  delete_file: Trash2,
+  run_terminal_command: Terminal,
+  codebase_search: Search,
+  edit_notebook: BookOpen,
+  call_mcp_tool: Plug,
+  fetch_mcp_resource: Plug,
+}
+
+// One row of the menu: icon, name, optional detail, and a right-hand marker
+function Row({
+  icon: Icon,
+  label,
+  detail,
+  right,
+  highlighted,
+  disabled,
+  title,
+  onPress,
+  onHover,
+}: {
+  icon?: Icon
+  label: string
+  detail?: string
+  right?: React.ReactNode
+  highlighted?: boolean
+  disabled?: boolean
+  title?: string
+  onPress?: () => void
+  onHover?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={title}
+      // mousedown keeps focus in the text box
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onPress?.()
+      }}
+      onMouseEnter={onHover}
+      className={cn(
+        'flex w-full items-center gap-2.5 px-3 h-8 text-left text-[13px]',
+        disabled ? 'text-[#5c606a] cursor-not-allowed' : 'text-[#d4d4d4]',
+        !disabled && (highlighted ? 'bg-[#2a2d35]' : 'hover:bg-[#2a2d35]')
+      )}
+    >
+      {Icon && <Icon size={15} className={cn('shrink-0', disabled ? 'text-[#4d515b]' : 'text-[#a0a4ad]')} />}
+      <span className="truncate">{label}</span>
+      {detail && <span className="truncate text-[12px] text-[#7d818c]">{detail}</span>}
+      {right && <span className="ml-auto flex shrink-0 items-center">{right}</span>}
+    </button>
+  )
+}
+
+// The @ menu: a search line, the Added section, and submenus for files and tools
 export function MentionMenu({
-  paths,
+  view,
+  setView,
+  query,
+  files,
   highlight,
   onPick,
   onHover,
+  optionalTools,
+  enabled,
+  onToggleTool,
 }: {
-  paths: string[]
+  view: MenuView
+  setView: (view: MenuView) => void
+  query: string
+  files: string[]
   highlight: number
   onPick: (path: string) => void
   onHover: (index: number) => void
+  optionalTools: ToolDef[]
+  enabled: string[]
+  onToggleTool: (name: string) => void
 }) {
+  const [, force] = useState(0)
+  const q = query.toLowerCase()
+  const tools = optionalTools.filter((t) => !q || t.name.includes(q) || (t.label ?? '').toLowerCase().includes(q))
+  const added = optionalTools.filter((t) => enabled.includes(t.name))
+
+  const toolRow = (t: ToolDef) => {
+    const on = enabled.includes(t.name)
+    return (
+      <Row
+        key={t.name}
+        icon={TOOL_ICONS[t.name] ?? Wrench}
+        label={t.label ?? t.name}
+        disabled={!t.available}
+        title={t.available ? t.description : 'Coming soon: ' + (t.needs ?? '')}
+        right={
+          t.available ? (on ? <Check size={14} className="text-[#e6e6e6]" /> : null) : (
+            <span className="text-[11px] text-[#5c606a]">Coming soon</span>
+          )
+        }
+        onPress={() => {
+          if (!t.available) return
+          onToggleTool(t.name)
+          force((n) => n + 1)
+        }}
+      />
+    )
+  }
+
+  const fileRow = (p: string, i: number) => {
+    const slash = p.lastIndexOf('/')
+    const name = slash >= 0 ? p.slice(slash + 1) : p
+    const dir = slash >= 0 ? p.slice(0, slash) : ''
+    return (
+      <Row
+        key={p}
+        icon={File}
+        label={name}
+        detail={dir}
+        highlighted={i === highlight}
+        onPress={() => onPick(p)}
+        onHover={() => onHover(i)}
+      />
+    )
+  }
+
+  const Divider = () => <div className="my-1 border-t border-[#2c2f36]" />
+  const Heading = ({ children }: { children: React.ReactNode }) => (
+    <div className="px-3 pt-2 pb-1 text-[12px] text-[#7d818c]">{children}</div>
+  )
+  const Back = ({ label }: { label: string }) => (
+    <button
+      type="button"
+      onMouseDown={(e) => {
+        e.preventDefault()
+        setView('root')
+      }}
+      className="flex w-full items-center gap-2 px-3 h-8 text-left text-[13px] text-[#d4d4d4] hover:bg-[#2a2d35]"
+    >
+      <ChevronLeft size={15} className="text-[#a0a4ad]" />
+      {label}
+    </button>
+  )
+
   return (
-    <div className="absolute bottom-full left-2 right-2 mb-2 z-20 rounded-md border border-[#30363d] bg-[#161b22] shadow-xl overflow-hidden">
-      <div className="px-3 py-1.5 text-[11px] text-[#8b949e] border-b border-[#30363d]">Files</div>
-      {paths.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-[#8b949e]">No matching files</div>
-      ) : (
-        <ul className="max-h-60 overflow-y-auto py-1">
-          {paths.map((p, i) => {
-            const slash = p.lastIndexOf('/')
-            const name = slash >= 0 ? p.slice(slash + 1) : p
-            const dir = slash >= 0 ? p.slice(0, slash) : ''
-            return (
-              <li key={p}>
-                <button
-                  type="button"
-                  // mousedown keeps the text box focused
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    onPick(p)
-                  }}
-                  onMouseEnter={() => onHover(i)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs',
-                    i === highlight ? 'bg-[#21262d] text-[#e6edf3]' : 'text-[#c9d1d9]'
-                  )}
-                >
-                  <File size={12} className="shrink-0 text-[#8b949e]" />
-                  <span className="truncate">{name}</span>
-                  {dir && <span className="ml-auto truncate text-[11px] text-[#8b949e]">{dir}</span>}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+    <div className="absolute bottom-full left-0 right-0 mb-2 z-20 max-h-80 overflow-y-auto rounded-xl border border-[#2c2f36] bg-[#1c1f25] py-1 shadow-2xl anim-pop">
+      <div key={view} className="anim-fade-up">
+      {view === 'root' && (
+        <>
+          <div className="px-3 py-2 text-[13px]">
+            {query ? (
+              <span className="text-[#d4d4d4]">{query}</span>
+            ) : (
+              <span className="text-[#6b6f78]">Add files, folders, docs...</span>
+            )}
+          </div>
+
+          {query ? (
+            <>
+              <Heading>Files</Heading>
+              {files.length === 0 ? (
+                <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching files</div>
+              ) : (
+                files.map(fileRow)
+              )}
+              {tools.length > 0 && (
+                <>
+                  <Heading>Tools</Heading>
+                  {tools.map(toolRow)}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {added.length > 0 && (
+                <>
+                  <Heading>Added</Heading>
+                  {added.map(toolRow)}
+                  <Divider />
+                </>
+              )}
+              <Row
+                icon={Copy}
+                label="Files & Folders"
+                right={<ChevronRight size={14} className="text-[#7d818c]" />}
+                onPress={() => setView('files')}
+              />
+              <Row
+                icon={Wrench}
+                label="Tools"
+                right={<ChevronRight size={14} className="text-[#7d818c]" />}
+                onPress={() => setView('tools')}
+              />
+            </>
+          )}
+        </>
       )}
+
+      {view === 'files' && (
+        <>
+          <Back label="Files & Folders" />
+          <Divider />
+          {files.length === 0 ? (
+            <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching files</div>
+          ) : (
+            files.map(fileRow)
+          )}
+        </>
+      )}
+
+      {view === 'tools' && (
+        <>
+          <Back label="Tools" />
+          <Divider />
+          {tools.length === 0 ? (
+            <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching tools</div>
+          ) : (
+            tools.map(toolRow)
+          )}
+        </>
+      )}
+      </div>
     </div>
   )
 }

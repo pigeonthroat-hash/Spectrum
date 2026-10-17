@@ -24,15 +24,83 @@ function fsCall(op: string, argsJson: string): Promise<string> {
 // Helper functions that Python code can call
 const PRELUDE = `
 import json
+import base64
+import io
+import zipfile
 
 async def list_files():
     return json.loads(await spectrum_fs("list", "[]"))
 
 async def read_file(path, start=None, end=None):
+    if isinstance(path, dict):
+        start = path.get("start", start)
+        end = path.get("end", end)
+        path = path["path"]
     return await spectrum_fs("read", json.dumps([path, start, end]))
 
 async def create_file(path, content=""):
     return await spectrum_fs("create", json.dumps([path, content]))
+
+async def read_files(paths):
+    return json.loads(await spectrum_fs("read_many", json.dumps([paths])))
+
+async def write_file(path, content="", text=None):
+    if isinstance(path, dict):
+        content = path.get("content", content)
+        path = path["path"]
+    if text is not None:
+        content = text
+    return await spectrum_fs("write", json.dumps([path, content]))
+
+async def edit_file(path, find, replace):
+    return await spectrum_fs("edit", json.dumps([path, find, replace]))
+
+async def copy_file(src, dst):
+    return await spectrum_fs("copy", json.dumps([src, dst]))
+
+async def move_file(src, dst):
+    return await spectrum_fs("move", json.dumps([src, dst]))
+
+async def delete_file(path):
+    return await spectrum_fs("delete", json.dumps([path]))
+
+async def make_folder(path):
+    return await spectrum_fs("mkdir", json.dumps([path]))
+
+async def read_bytes(path):
+    return base64.b64decode(await spectrum_fs("read_bytes", json.dumps([path])))
+
+async def write_bytes(path, data):
+    return await spectrum_fs("write_bytes", json.dumps([path, base64.b64encode(data).decode()]))
+
+async def zip_files(paths, zip_path):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for p in paths:
+            z.writestr(p, await read_bytes(p))
+    await write_bytes(zip_path, buf.getvalue())
+    return zip_path
+
+async def unzip(zip_path, dest_folder=""):
+    z = zipfile.ZipFile(io.BytesIO(await read_bytes(zip_path)))
+    made = []
+    for name in z.namelist():
+        if name.endswith("/"):
+            continue
+        target = (dest_folder.rstrip("/") + "/" + name) if dest_folder else name
+        await write_bytes(target, z.read(name))
+        made.append(target)
+    return made
+
+import sys as _sys
+import types as _types
+_mod = _types.ModuleType("functions")
+for _name in ["list_files", "read_file", "read_files", "write_file", "edit_file", "create_file",
+              "copy_file", "move_file", "delete_file", "make_folder", "zip_files", "unzip",
+              "read_bytes", "write_bytes"]:
+    setattr(_mod, _name, globals()[_name])
+_sys.modules["functions"] = _mod
+_sys.modules["spectrum"] = _mod
 `
 
 let pyodidePromise: Promise<PyodideInterface> | null = null
@@ -119,8 +187,8 @@ self.addEventListener('message', async (e: MessageEvent) => {
         stdin: () => {
           sendPartial('out')
           sendPartial('err')
-          post({ type: 'input-request', id: msg.id + '-' + ++inputs })
-          return readLine(msg.id + '-' + inputs, msg.stdinPath)
+          post({ type: 'input-request', id: msg.token + '-' + ++inputs })
+          return readLine(msg.token + '-' + inputs, msg.stdinPath)
         },
       })
       await py.runPythonAsync(msg.code)
