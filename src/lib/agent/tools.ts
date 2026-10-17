@@ -3,6 +3,7 @@ import type { FileNode } from '../storage/types'
 import { addMemory, removeMemory } from './memory'
 import { useAppStore } from '../../store/useAppStore'
 import { isAutoApplyOn } from './autoApply'
+import { waitForDecision } from './decisions'
 
 const MAX_TOOL_OUTPUT = 8000
 
@@ -28,6 +29,11 @@ export function readLines(text: string, start?: unknown, end?: unknown): string 
 }
 
 // Creates a new file. Existing files are not overwritten.
+export async function createAndRefresh(projectId: string, path: string, content: string): Promise<void> {
+  await createNew(projectId, path, content)
+  useAppStore.getState().setFileTree(await storageFor(projectId).listTree())
+}
+
 export async function createNew(projectId: string, path: string, content: string): Promise<void> {
   const clean = path.trim().replace(/^\/+/, '')
   if (!clean) throw new Error('The file path is empty.')
@@ -85,23 +91,44 @@ export async function executeTool(
       return searchFiles(need(projectId), String(args.query ?? ''))
     case 'create_file': {
       const path = String(args.path ?? '').trim()
-      await createNew(need(projectId), path, String(args.content ?? ''))
-      return `Created ${path}.`
+      const project = need(projectId)
+      const content = String(args.content ?? '')
+      if ((await listPaths(project)).includes(path)) {
+        throw new Error(`${path} already exists. Only new files can be created.`)
+      }
+      if (isAutoApplyOn()) {
+        await createAndRefresh(project, path, content)
+        return `Created ${path}. Continue with the next step.`
+      }
+      const store = useAppStore.getState()
+      store.setPendingDiffs([...store.pendingDiffs.filter((d) => d.path !== path), { path, original: '', modified: content }])
+      store.openFile(path, path.split('/').pop() ?? path, content)
+      const outcome = await waitForDecision(path, 'create')
+      if (outcome === 'applied') return `Created ${path}.`
+      if (outcome === 'declined') return `The user declined to create ${path}.`
+      return `Creating ${path} was cancelled.`
     }
     case 'edit_file': {
       const path = String(args.path ?? '').trim()
       const find = String(args.find ?? '')
       const replace = String(args.replace ?? '')
-      if (!find) throw new Error('find must not be empty.')
       const original = await storageFor(need(projectId)).readFile(path)
-      const count = original.split(find).length - 1
+      // Match line breaks the way the file has them (Windows files use \r\n)
+      const eol = original.includes('\r\n') ? '\r\n' : '\n'
+      const findText = find.replace(/\r?\n/g, eol)
+      const replaceText = replace.replace(/\r?\n/g, eol)
+      // An empty find is only allowed for an empty file: replace then becomes the whole file
+      if (!find && original.trim() !== '') {
+        throw new Error(`${path} already has content. Put the exact text to replace in find.`)
+      }
+      const count = find ? original.split(findText).length - 1 : 1
       if (count === 0) {
-        throw new Error(`The text to find was not in ${path}. Read the file again and copy the exact text.`)
+        throw new Error(`The text to find was not in ${path}. Read the file again and copy the exact text. Do not repeat the same edit.`)
       }
       if (count > 1) {
         throw new Error(`The text to find appears ${count} times in ${path}. Use a longer, unique piece of text.`)
       }
-      const modified = original.replace(find, () => replace)
+      const modified = find ? original.replace(findText, () => replaceText) : replaceText
       const store = useAppStore.getState()
       store.setPendingDiffs([...store.pendingDiffs.filter((d) => d.path !== path), { path, original, modified }])
       // Open the file so the proposed change shows in the editor
@@ -114,7 +141,10 @@ export async function executeTool(
         useAppStore.getState().acceptDiff(path)
         return `Applied the change to ${path}. Continue with the next step.`
       }
-      return `Proposed a change to ${path}. The user will apply or decline it in the editor.`
+      const outcome = await waitForDecision(path, 'edit')
+      if (outcome === 'applied') return `Applied the change to ${path}.`
+      if (outcome === 'declined') return `The user declined the change to ${path}.`
+      return `The change to ${path} was cancelled.`
     }
     case 'remember':
       addMemory(memoryId, String(args.note ?? ''))

@@ -10,6 +10,8 @@ import { listPaths } from '../lib/agent/tools'
 import { storageFor } from '../lib/storage/active'
 import { MessageContent } from './MessageContent'
 import { markReplyStarted } from '../lib/agent/autoApply'
+import { cancelAllDecisions } from '../lib/agent/decisions'
+import { applyPending, declinePending } from '../lib/agent/applyChange'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 
 // Only the last few messages are sent to the model, to keep requests small
@@ -66,8 +68,6 @@ export function AISidebar() {
   const mode = useAppStore((s) => s.mode)
   const setMode = useAppStore((s) => s.setMode)
   const pendingDiffs = useAppStore((s) => s.pendingDiffs)
-  const acceptAllDiffs = useAppStore((s) => s.acceptAllDiffs)
-  const rejectAllDiffs = useAppStore((s) => s.rejectAllDiffs)
   const activeTabPath = useAppStore((s) => s.activeTabPath)
   const openTabs = useAppStore((s) => s.openTabs)
   const chatStyle = useAppStore((s) => s.chatStyle)
@@ -155,7 +155,10 @@ export function AISidebar() {
     }
   }
 
-  const stopGenerating = () => abortRef.current?.abort()
+  const stopGenerating = () => {
+    abortRef.current?.abort()
+    cancelAllDecisions()
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117]">
@@ -167,13 +170,13 @@ export function AISidebar() {
           </span>
           <div className="flex gap-1.5">
             <button
-              onClick={acceptAllDiffs}
+              onClick={() => pendingDiffs.forEach((d) => void applyPending(d.path))}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded"
             >
               <Check size={12} /> Keep All
             </button>
             <button
-              onClick={rejectAllDiffs}
+              onClick={() => pendingDiffs.forEach((d) => declinePending(d.path))}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
             >
               <X size={12} /> Undo All

@@ -84,7 +84,7 @@ const TOOL_SPECS = [
     function: {
       name: 'edit_file',
       description:
-        'Propose a change to an existing file. Replaces the exact text in "find" with "replace". The user accepts or rejects it. "find" must match the file exactly once. After edit_file, follow the tool result. If it says proposed, say it is waiting for the user to apply it. If it says applied, say it is done and continue with the next step. Edit only the file the user is working on (Open file below), unless they name a different file. Words in the request are not a file name.',
+        'Propose a change to an existing file. Replaces the exact text in "find" with "replace". The user accepts or rejects it. "find" must match the file exactly once. Use an empty "find" only for an empty file; then "replace" becomes the whole file. After edit_file, follow the tool result. If it says proposed, say it is waiting for the user to apply it. If it says applied, say it is done and continue with the next step. Edit only the file the user is working on (Open file below), unless they name a different file. Words in the request are not a file name.',
       parameters: {
         type: 'object',
         properties: {
@@ -141,15 +141,19 @@ function buildGroqSystemPrompt(opts: {
   activeFileName: string | null
 }): string {
   const lines = [
-    'You are Spectrum, a coding assistant inside a code editor.',
-    `Mode: ${MODE_HINTS[opts.mode]}`,
-    '',
-    'Use the provided tools when the request needs project files, running code, or a calculation.',
-    'Use run_python for any math. Do not calculate yourself.',
-    'Never invent file contents. Read a file before describing it.',
-    'To change an existing file, read it first, then use edit_file. The user reviews the change before it is applied. Use create_file only for new files.',
-    'When you have the answer, reply in plain text.',
-  ]
+  'You are Spectrum, a coding assistant inside a code editor.',
+  `Mode: ${MODE_HINTS[opts.mode]}`,
+  '',
+  'Rules:',
+  '- Use tools for any file access, code execution, or calculation. Never invent file contents or compute math yourself.',
+  '- Always read a file before describing or editing it.',
+  '- To edit an existing file: read → edit_file. The user reviews the change before it is applied.',
+  '- Use create_file only for brand-new files.',
+  '- If a tool errors, do not retry the same call. Re-read the file and use a shorter find string.',
+  '- When asked to add or change content in a file, read it once, then use edit_file. Do not read the file again.',
+  '- To add code to an existing file, use edit_file, not a code block. Code blocks are for examples only.',
+  '- When finished, reply in plain text only.',
+]
   if (opts.memory.length) lines.push('', 'Notes from earlier chats:', ...opts.memory.map((n) => `- ${n}`))
   if (opts.files.length) {
     lines.push('', 'Project files (first 60):', ...opts.files.slice(0, 60))
@@ -260,6 +264,8 @@ export async function runGroqAgent(opts: {
     { role: 'user', content: opts.userText },
   ]
 
+  const seen = new Set<string>()
+
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal?.aborted) return
 
@@ -282,13 +288,26 @@ export async function runGroqAgent(opts: {
 
     for (const call of toolCalls) {
       if (signal?.aborted) return
+
+      const key = `${call.function.name}:${call.function.arguments}`
+      if (seen.has(key)) {
+        convo.push({
+          role: 'tool',
+          tool_call_id: call.id,
+          content: 'You already ran this exact call and have its result above. Do not repeat it. Make the change with edit_file, or give the answer.',
+        })
+        continue
+      }
+      seen.add(key)
+
       const { block, output, ok } = await runOneTool(call, projectId)
       setBlocks((bs) => [...bs, block])
       const finished = { ...block, output, status: ok ? ('done' as const) : ('error' as const) }
       setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === block.id ? finished : b)))
       convo.push({ role: 'tool', tool_call_id: call.id, content: output.slice(0, MAX_RESULT_CHARS) })
-    }
-  }
 
-  setBlocks((bs) => appendText(bs, '\n\nStopped after 8 steps.'))
+      // A file change makes earlier reads out of date, so they are allowed again
+      if (call.function.name === 'edit_file' || call.function.name === 'create_file') seen.clear()
+   }
+  }
 }

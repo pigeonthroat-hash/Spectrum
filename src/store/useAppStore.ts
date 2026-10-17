@@ -119,6 +119,8 @@ interface AppState {
   setSaveStatus: (status: SaveStatus) => void
 }
 
+import { languageFor } from '../lib/languages'
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -154,7 +156,7 @@ export const useAppStore = create<AppState>()(
 
       setFileTree: (tree) => set({ fileTree: tree }),
 
-      openFile: (path, name, content, language = 'typescript') => {
+      openFile: (path, name, content, language = languageFor(name)) => {
         const { openTabs } = get()
         if (openTabs.some((t) => t.path === path)) {
           set({ activeTabPath: path })

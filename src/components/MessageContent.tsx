@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, FilePlus } from 'lucide-react'
+import { useAppStore } from '../store/useAppStore'
+import { executeTool } from '../lib/agent/tools'
+import { errorText } from '../lib/errors'
+
+// Suggested file name for a code block, based on its language
+function defaultFileName(lang: string): string {
+  const ext: Record<string, string> = {
+    javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', tsx: 'tsx', jsx: 'jsx',
+    html: 'html', css: 'css', python: 'py', py: 'py', json: 'json', markdown: 'md', md: 'md',
+  }
+  return `example.${ext[lang.toLowerCase()] ?? 'txt'}`
+}
 
 type Part = { kind: 'text'; text: string } | { kind: 'code'; lang: string; code: string }
 
@@ -58,6 +70,20 @@ function InlineText({ text }: { text: string }) {
 
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [copied, setCopied] = useState(false)
+  const projectId = useAppStore((s) => s.projectId)
+
+  // Saves the example as a new file. The new file waits for Apply or Decline, like any other new file.
+  const saveAsNewFile = () => {
+    if (!projectId) {
+      window.alert('Open a project first, then save the example as a new file.')
+      return
+    }
+    const name = window.prompt('New file name (for example src/example.js):', defaultFileName(lang))
+    if (!name || !name.trim()) return
+    executeTool(projectId, 'create_file', { path: name.trim(), content: code }).catch((err) =>
+      window.alert(errorText(err))
+    )
+  }
 
   useEffect(() => {
     if (!copied) return
@@ -89,11 +115,11 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           </button>
           <button
             type="button"
-            disabled
-            title="Apply comes with diff review (coming soon)"
-            className="px-1.5 py-0.5 rounded-sm opacity-50 cursor-not-allowed"
+            onClick={saveAsNewFile}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm hover:text-[#e6edf3] hover:bg-[#21262d]"
           >
-            Apply
+            <FilePlus size={11} />
+            Save as new file
           </button>
         </div>
       </div>
