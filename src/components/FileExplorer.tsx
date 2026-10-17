@@ -1,3 +1,5 @@
+import { useFolderMenu } from '../lib/run/menuStore'
+import { languageFor } from '../lib/languages'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useAppStore, type FileNode } from '../store/useAppStore'
 import { Folder, ChevronRight, ChevronDown, FolderOpen, FilePlus, FolderPlus, RefreshCw, Trash2 } from 'lucide-react'
@@ -19,18 +21,6 @@ function canMove(from: string, folder: string): boolean {
   return true
 }
 
-function languageFor(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (ext === 'ts' || ext === 'tsx') return 'typescript'
-  if (ext === 'js' || ext === 'jsx') return 'javascript'
-  if (ext === 'py') return 'python'
-  if (ext === 'rs') return 'rust'
-  if (ext === 'json') return 'json'
-  if (ext === 'css') return 'css'
-  if (ext === 'html') return 'html'
-  if (ext === 'md') return 'markdown'
-  return 'plaintext'
-}
 
 // Folders with only one subfolder inside are shown as one row: "components/ui"
 function compactTree(nodes: FileNode[]): FileNode[] {
@@ -74,6 +64,11 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
       <div
         data-node-path={node.path}
         data-node-folder={isFolder ? 'true' : 'false'}
+        onContextMenu={(e) => {
+          if (!isFolder) return
+          e.preventDefault()
+          useFolderMenu.getState().open(e.clientX, e.clientY, node.path)
+        }}
         onPointerDown={(e) => {
           if ((e.target as HTMLElement).closest('button')) return
           onStartDrag(node, e)

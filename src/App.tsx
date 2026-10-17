@@ -1,3 +1,5 @@
+import { FolderMenu } from './components/FolderMenu'
+import { LanguageLabel } from './components/LanguageLabel'
 import { useEffect, useState } from 'react'
 import { SettingsDialog } from './components/SettingsDialog'
 import logo from './assets/logo.png'
@@ -85,7 +87,8 @@ export default function App() {
         </div>
         <div className="hidden md:flex items-center gap-3">
           <span>UTF-8</span>
-          <span>TypeScript</span>
+          <LanguageLabel />
+          <FolderMenu />
         </div>
       </footer>
     </div>

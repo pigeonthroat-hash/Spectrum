@@ -55,6 +55,16 @@ function getPyodide(): Promise<PyodideInterface> {
   return pyodidePromise
 }
 
+// Asks the page for one line of typed input. The request stays open until the user types,
+// because the service worker holds it (see public/stdin-sw.js). The Python code waits here.
+function readLine(id: string, stdinPath: string): string {
+  const req = new XMLHttpRequest()
+  req.open('GET', stdinPath + '?id=' + encodeURIComponent(id), false)
+  req.send()
+  if (req.status !== 200) throw new Error('Typed input is not available. Reload the page and try again.')
+  return req.responseText
+}
+
 self.addEventListener('message', async (e: MessageEvent) => {
   const msg = e.data
   if (msg.type === 'fsResult') {
@@ -67,13 +77,40 @@ self.addEventListener('message', async (e: MessageEvent) => {
   }
   if (msg.type === 'run') {
     const out: string[] = []
+    let inputs = 0
+    const decoder = new TextDecoder()
+    // Output arrives byte by byte, so a prompt without a newline is still shown before input is asked for
+    const lines: Record<'out' | 'err', number[]> = { out: [], err: [] }
+    const sendPartial = (stream: 'out' | 'err') => {
+      if (lines[stream].length === 0) return
+      const text = decoder.decode(new Uint8Array(lines[stream]))
+      lines[stream] = []
+      out.push(text)
+      post({ type: 'out', id: msg.id, text, err: stream === 'err' })
+    }
+    const onByte = (stream: 'out' | 'err') => (code: number) => {
+      if (code === 10) sendPartial(stream)
+      else lines[stream].push(code)
+    }
     try {
       const py = await getPyodide()
-      py.setStdout({ batched: (s: string) => out.push(s) })
-      py.setStderr({ batched: (s: string) => out.push(s) })
+      py.setStdout({ raw: onByte('out') })
+      py.setStderr({ raw: onByte('err') })
+      py.setStdin({
+        stdin: () => {
+          sendPartial('out')
+          sendPartial('err')
+          post({ type: 'input-request', id: msg.id + '-' + ++inputs })
+          return readLine(msg.id + '-' + inputs, msg.stdinPath)
+        },
+      })
       await py.runPythonAsync(msg.code)
+      sendPartial('out')
+      sendPartial('err')
       post({ type: 'done', id: msg.id, output: out.join('\n') })
     } catch (err) {
+      sendPartial('out')
+      sendPartial('err')
       post({
         type: 'done',
         id: msg.id,
