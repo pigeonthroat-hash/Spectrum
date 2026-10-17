@@ -2,6 +2,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 // Change these, then redeploy
 const DAILY_LIMIT = 45
+const OWNER_EMAIL = 'pigeonthroat@gmail.com' // NEW
+const OWNER_LIMIT = 500                      // NEW
 const ALLOWED_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
 const ALLOWED_ORIGINS = ['https://pigeonthroat-hash.github.io', 'http://localhost:5173']
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -51,12 +53,13 @@ Deno.serve(async (req) => {
     return fail(400, 'That model is not available through Spectrum.', origin)
   }
 
-  // 3. Count this request against the user's daily limit
+  // 3. Count this request against the user's daily limit (higher for the owner)
+  const limit = userData.user.email === OWNER_EMAIL ? OWNER_LIMIT : DAILY_LIMIT
   const { data: count, error: countError } = await supabase.rpc('use_groq_request', {
-    daily_limit: DAILY_LIMIT,
+    daily_limit: limit,
   })
   if (countError) return fail(500, 'Could not check the daily limit. Try again.', origin)
-  if (count === -1) return fail(403, `Daily limit reached (${DAILY_LIMIT} requests). Try again tomorrow.`, origin)
+  if (count === -1) return fail(403, `Daily limit reached (${limit} requests). Try again tomorrow.`, origin)
 
   // 4. Forward to Groq using the secret key
   const forward: Record<string, unknown> = {}
