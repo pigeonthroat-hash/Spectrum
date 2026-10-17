@@ -35,10 +35,14 @@ console.error = (...a) => send('err', a);
 let pending = 0;
 let scriptDone = false;
 let finished = false;
+// Checks again on a later tick, so code that resumes after an await has time to run first
 const finishIfIdle = () => {
-  if (finished || !scriptDone || pending > 0) return;
-  finished = true;
-  postMessage({ type: 'done' });
+  if (finished || !scriptDone) return;
+  realSetTimeout(() => {
+    if (finished || !scriptDone || pending > 0) return;
+    finished = true;
+    postMessage({ type: 'done' });
+  }, 0);
 };
 
 const timers = new Set();
