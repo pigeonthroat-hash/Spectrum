@@ -57,6 +57,15 @@ export class OpfsStorage implements StorageProvider {
     )
   }
 
+  // Byte access goes through the text methods (uploads are not used with this storage yet)
+  async readBytes(path: string): Promise<Uint8Array> {
+    return new TextEncoder().encode(await this.readFile(path))
+  }
+
+  async writeBytes(path: string, data: Uint8Array): Promise<void> {
+    await this.writeFile(path, new TextDecoder().decode(data))
+  }
+
   async readFile(path: string): Promise<string> {
     const { dir, name } = await this.parentOf(path, false)
     const handle = await dir.getFileHandle(name)

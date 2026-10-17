@@ -1,5 +1,13 @@
 import { supabase } from '../supabase'
-import { decodeText, encodeText, type ChunkRef } from './chunk'
+import {
+  decodeBytes,
+  decodeText,
+  encodeBytes,
+  encodeText,
+  MAX_UPLOAD_BYTES,
+  type ChunkRef,
+  type EncodedFile,
+} from './chunk'
 import type { FileNode, StorageProvider } from './types'
 
 // Cloud projects stored in Supabase. Requires sign-in.
@@ -21,6 +29,7 @@ interface FileRow {
   sha256: string
   compressed: boolean
   chunks: ChunkRef[]
+  kind?: 'text' | 'binary'
 }
 
 function client() {
@@ -79,7 +88,7 @@ export class CloudStorage implements StorageProvider {
   private async getRow(path: string): Promise<FileRow | null> {
     const { data, error } = await client()
       .from('files')
-      .select('path,version,size,sha256,compressed,chunks')
+      .select('path,version,size,sha256,compressed,chunks,kind')
       .eq('project_id', this.projectId)
       .eq('path', path)
       .maybeSingle()
@@ -124,7 +133,21 @@ export class CloudStorage implements StorageProvider {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const encoded = await encodeText(content)
+    await this.store(path, await encodeText(content), 'text')
+  }
+
+  async readBytes(path: string): Promise<Uint8Array> {
+    const row = await this.getRow(path)
+    if (!row) throw new Error(`File not found: ${path}`)
+    return decodeBytes(row, (hash) => this.downloadChunk(hash))
+  }
+
+  // Uploaded files (images, raw data) are limited to 10 MB
+  async writeBytes(path: string, data: Uint8Array): Promise<void> {
+    await this.store(path, await encodeBytes(data, MAX_UPLOAD_BYTES), 'binary')
+  }
+
+  private async store(path: string, encoded: EncodedFile, kind: 'text' | 'binary'): Promise<void> {
     for (const chunk of encoded.chunks) {
       await this.uploadChunk(chunk.hash, chunk.data)
     }
@@ -142,6 +165,7 @@ export class CloudStorage implements StorageProvider {
           sha256: encoded.sha256,
           compressed: encoded.compressed,
           chunks: encoded.refs,
+          kind,
           updated_at: now,
         },
         { onConflict: 'project_id,path' }

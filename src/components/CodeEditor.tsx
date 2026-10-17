@@ -1,3 +1,5 @@
+import { isBinaryName } from '../lib/files/kinds'
+import { FileViewer } from './FileViewer'
 import Editor from '@monaco-editor/react'
 import { InlineDiff } from './InlineDiff'
 import { useAppStore } from '../store/useAppStore'
@@ -26,6 +28,7 @@ export function CodeEditor() {
     redoLastUndo,
   } = useAppStore()
 
+  const projectId = useAppStore((s) => s.projectId)
   const activeTab = openTabs.find((t) => t.path === activeTabPath)
   const activeDiff = pendingDiffs.find((d) => d.path === activeTabPath)
   const canUndo = !!activeTab && lastAccepted?.path === activeTab.path
@@ -141,6 +144,8 @@ export function CodeEditor() {
       <div className="flex-1 min-h-0 relative">
         {!activeTab ? (
           <WelcomeScreen />
+        ) : projectId && isBinaryName(activeTab.name) ? (
+          <FileViewer projectId={projectId} path={activeTab.path} name={activeTab.name} />
         ) : activeDiff ? (
           <InlineDiff original={activeDiff.original} modified={activeDiff.modified} />
         ) : (

@@ -1,8 +1,10 @@
+import { isBinaryName } from '../lib/files/kinds'
+import { uploadFiles } from '../lib/files/upload'
 import { useFolderMenu } from '../lib/run/menuStore'
 import { languageFor } from '../lib/languages'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useAppStore, type FileNode } from '../store/useAppStore'
-import { Folder, ChevronRight, ChevronDown, FolderOpen, FilePlus, FolderPlus, RefreshCw, Trash2 } from 'lucide-react'
+import { Folder, ChevronRight, ChevronDown, FolderOpen, FilePlus, FolderPlus, RefreshCw, Trash2, Upload } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { CloudProjects } from './CloudProjects'
 import { FileIcon } from './FileIcon'
@@ -201,6 +203,11 @@ export function FileExplorer() {
   const openNode = async (node: FileNode) => {
     if (!projectId) return
     try {
+      // Pictures and other binary files are shown by the editor area, not read as text
+      if (isBinaryName(node.name)) {
+        openFile(node.path, node.name, '', 'plaintext')
+        return
+      }
       const text = await storageFor(projectId).readFile(node.path)
       openFile(node.path, node.name, text, languageFor(node.name))
       if (isMobileNow()) useAppStore.getState().setMobileView('editor')
@@ -334,8 +341,21 @@ export function FileExplorer() {
     )
   }
 
+  const uploadInput = useRef<HTMLInputElement>(null)
+
   return (
-    <div className="h-full flex flex-col bg-[#0d1117]">
+    <div
+      className="h-full flex flex-col bg-[#0d1117]"
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('Files')) e.preventDefault()
+      }}
+      onDrop={(e) => {
+        // Files dragged in from your computer go to the project root
+        if (!e.dataTransfer.types.includes('Files') || !projectId) return
+        e.preventDefault()
+        void uploadFiles(Array.from(e.dataTransfer.files), projectId)
+      }}
+    >
       {projectId && (
         <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-[#30363d]">
           <span className="truncate text-xs text-[#e6edf3]">{projectName}</span>
@@ -346,6 +366,20 @@ export function FileExplorer() {
             <button title="New folder" onClick={() => create('folder')} className="p-1 rounded hover:bg-[#21262d]">
               <FolderPlus size={13} />
             </button>
+            <button title="Upload files" onClick={() => uploadInput.current?.click()} className="p-1 rounded hover:bg-[#21262d]">
+              <Upload size={13} />
+            </button>
+            <input
+              ref={uploadInput}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                const list = Array.from(e.target.files ?? [])
+                e.target.value = ''
+                if (projectId && list.length > 0) void uploadFiles(list, projectId)
+              }}
+            />
             <button title="Refresh" onClick={refresh} className="p-1 rounded hover:bg-[#21262d]">
               <RefreshCw size={13} />
             </button>

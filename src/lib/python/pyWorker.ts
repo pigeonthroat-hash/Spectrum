@@ -79,18 +79,37 @@ self.addEventListener('message', async (e: MessageEvent) => {
     const out: string[] = []
     let inputs = 0
     const decoder = new TextDecoder()
-    // Output arrives byte by byte, so a prompt without a newline is still shown before input is asked for
-    const lines: Record<'out' | 'err', number[]> = { out: [], err: [] }
+    // Output arrives byte by byte. \n ends a line. \r goes back to the start of the line,
+    // so a countdown or progress bar overwrites itself instead of making a new line.
+    const buffers: Record<'out' | 'err', number[]> = { out: [], err: [] }
+    const lastWasCR: Record<'out' | 'err', boolean> = { out: false, err: false }
+    const emit = (stream: 'out' | 'err', text: string, mode: 'line' | 'progress' | 'end') => {
+      if (mode === 'line') out.push(text)
+      post({ type: 'out', id: msg.id, text, err: stream === 'err', mode })
+    }
     const sendPartial = (stream: 'out' | 'err') => {
-      if (lines[stream].length === 0) return
-      const text = decoder.decode(new Uint8Array(lines[stream]))
-      lines[stream] = []
-      out.push(text)
-      post({ type: 'out', id: msg.id, text, err: stream === 'err' })
+      if (buffers[stream].length === 0) return
+      const text = decoder.decode(new Uint8Array(buffers[stream]))
+      buffers[stream] = []
+      emit(stream, text, 'line')
     }
     const onByte = (stream: 'out' | 'err') => (code: number) => {
-      if (code === 10) sendPartial(stream)
-      else lines[stream].push(code)
+      if (code === 13) {
+        emit(stream, decoder.decode(new Uint8Array(buffers[stream])), 'progress')
+        buffers[stream] = []
+        lastWasCR[stream] = true
+        return
+      }
+      if (code === 10) {
+        // \r\n ends the progress line; a plain \n ends an ordinary line
+        if (lastWasCR[stream]) emit(stream, '', 'end')
+        else emit(stream, decoder.decode(new Uint8Array(buffers[stream])), 'line')
+        buffers[stream] = []
+        lastWasCR[stream] = false
+        return
+      }
+      buffers[stream].push(code)
+      lastWasCR[stream] = false
     }
     try {
       const py = await getPyodide()

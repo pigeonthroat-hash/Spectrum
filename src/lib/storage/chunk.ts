@@ -1,7 +1,8 @@
 import { gzip, gunzip } from './compress'
 
 export const CHUNK_SIZE = 512 * 1024 // 512 KB per chunk, well under the 50 MB object limit
-export const MAX_FILE_BYTES = 100 * 1024 * 1024 // 100 MB per file
+export const MAX_FILE_BYTES = 100 * 1024 * 1024 // 100 MB per text file
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 // 10 MB per uploaded file (images, raw data)
 
 export interface ChunkRef {
   hash: string // SHA-256 of the stored bytes; also the chunk's name
@@ -11,8 +12,8 @@ export interface ChunkRef {
 export interface FileManifest {
   path: string
   version: number
-  size: number // original UTF-8 length
-  sha256: string // SHA-256 of the original UTF-8 bytes
+  size: number // original length in bytes
+  sha256: string // SHA-256 of the original bytes
   compressed: boolean
   chunks: ChunkRef[] // in order
 }
@@ -38,11 +39,10 @@ export async function sha256Hex(data: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-// Text -> compressed (if smaller) -> chunks with checksums
-export async function encodeText(text: string): Promise<EncodedFile> {
-  const original = encoder.encode(text)
-  if (original.byteLength > MAX_FILE_BYTES) {
-    throw new Error(`File is too large (limit is ${MAX_FILE_BYTES / (1024 * 1024)} MB)`)
+// Bytes -> compressed (if smaller) -> chunks with checksums
+export async function encodeBytes(original: Uint8Array, limit = MAX_FILE_BYTES): Promise<EncodedFile> {
+  if (original.byteLength > limit) {
+    throw new Error(`File is too large (limit is ${limit / (1024 * 1024)} MB)`)
   }
 
   const gz = await gzip(original)
@@ -67,11 +67,15 @@ export async function encodeText(text: string): Promise<EncodedFile> {
   }
 }
 
-// Chunks -> verify each one -> join -> verify whole file -> decompress -> text
-export async function decodeText(
+export function encodeText(text: string): Promise<EncodedFile> {
+  return encodeBytes(encoder.encode(text))
+}
+
+// Chunks -> verify each one -> join -> verify whole file -> decompress -> bytes
+export async function decodeBytes(
   manifest: Pick<FileManifest, 'sha256' | 'compressed' | 'chunks'>,
   fetchChunk: (hash: string) => Promise<Uint8Array>
-): Promise<string> {
+): Promise<Uint8Array> {
   const parts = await Promise.all(
     manifest.chunks.map(async (ref) => {
       const data = await fetchChunk(ref.hash)
@@ -88,7 +92,14 @@ export async function decodeText(
   if ((await sha256Hex(original)) !== manifest.sha256) {
     throw new Error('File checksum does not match. The file may be damaged.')
   }
-  return decoder.decode(original)
+  return original
+}
+
+export async function decodeText(
+  manifest: Pick<FileManifest, 'sha256' | 'compressed' | 'chunks'>,
+  fetchChunk: (hash: string) => Promise<Uint8Array>
+): Promise<string> {
+  return decoder.decode(await decodeBytes(manifest, fetchChunk))
 }
 
 function concat(parts: Uint8Array[]): Uint8Array {

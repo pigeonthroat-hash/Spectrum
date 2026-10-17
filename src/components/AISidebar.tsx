@@ -1,3 +1,4 @@
+import { isBinaryName } from '../lib/files/kinds'
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { Loader2, Sparkles, Check, X, File, Square } from 'lucide-react'
@@ -28,7 +29,7 @@ async function attachMentions(text: string, projectId: string | null): Promise<s
   const known = new Set(await listPaths(projectId))
   const storage = storageFor(projectId)
   const parts: string[] = []
-  for (const path of mentioned.filter((p) => known.has(p)).slice(0, MAX_MENTIONED_FILES)) {
+  for (const path of mentioned.filter((p) => known.has(p) && !isBinaryName(p)).slice(0, MAX_MENTIONED_FILES)) {
     try {
       const content = await storage.readFile(path)
       parts.push(`File ${path}:\n${content.slice(0, MAX_MENTIONED_CHARS)}`)

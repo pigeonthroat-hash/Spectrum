@@ -6,7 +6,7 @@ import { listPaths } from '../agent/tools'
 import { outputStore, PROMPT, type RunStatus } from './outputStore'
 import { openHtmlInNewTab } from './newTab'
 
-const JS_TIMEOUT_MS = 15000
+const JS_TIMEOUT_MS = 300000 // 5 minutes; Stop works at any time
 
 // The Stop button for the run in progress
 let stopCurrent: (() => void) | null = null
@@ -66,7 +66,7 @@ async function runScript(code: string, language: 'javascript' | 'typescript'): P
 
   stopCurrent = () => finish('stopped', null)
   timer = setTimeout(() => {
-    outputStore.getState().append('error', 'Stopped: the program took longer than 15 seconds.')
+    outputStore.getState().append('error', 'Stopped: the program took longer than 5 minutes.')
     finish('error', 1)
   }, JS_TIMEOUT_MS)
 

@@ -3,7 +3,7 @@ import { storageFor } from '../storage/active'
 import { outputStore } from '../run/outputStore'
 
 // Runs Python in a background thread. Stops it if it takes too long.
-const TIMEOUT_MS = 90_000
+const TIMEOUT_MS = 600_000 // 10 minutes; Stop works at any time
 
 export interface PyResult {
   output: string
@@ -102,7 +102,7 @@ export function runPython(
         return
       }
       if (m.type === 'out') {
-        if (streamToPanel && m.id === id) outputStore.getState().append(m.err ? 'error' : 'log', m.text)
+        if (streamToPanel && m.id === id) outputStore.getState().writeOutput(m.err ? 'error' : 'log', m.text, m.mode)
         return
       }
       if (m.type === 'fs') {

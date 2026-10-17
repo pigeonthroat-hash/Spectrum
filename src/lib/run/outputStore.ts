@@ -4,7 +4,7 @@ import { create } from 'zustand'
 export const PROMPT = 'PS /project> '
 
 // The Output panel's state. Not saved between reloads.
-export type OutputLine = { kind: 'command' | 'log' | 'error' | 'info' | 'prompt'; text: string }
+export type OutputLine = { kind: 'command' | 'log' | 'error' | 'info' | 'prompt'; text: string; progress?: boolean }
 export type RunStatus = 'idle' | 'running' | 'done' | 'error' | 'stopped'
 
 interface OutputState {
@@ -17,6 +17,7 @@ interface OutputState {
   input: string | null // id of the program's input request, when it is waiting for a typed line
   start: (title: string) => void
   append: (kind: OutputLine['kind'], text: string) => void
+  writeOutput: (kind: OutputLine['kind'], text: string, mode: 'line' | 'progress' | 'end') => void
   finish: (status: RunStatus, exitCode: number | null) => void
   showPreview: (html: string, title: string) => void
   requestInput: (id: string) => void
@@ -36,6 +37,20 @@ export const outputStore = create<OutputState>()((set) => ({
   input: null,
   start: (title) => set({ open: true, title, status: 'running', exitCode: null, lines: [], preview: null, input: null }),
   append: (kind, text) => set((s) => ({ lines: [...s.lines, { kind, text }] })),
+  // "progress" replaces the line above it (like \r), "end" finishes a progress line, "line" adds a new line
+  writeOutput: (kind, text, mode) =>
+    set((s) => {
+      const last = s.lines[s.lines.length - 1]
+      if (mode === 'progress') {
+        const line = { kind, text, progress: true }
+        return { lines: last && last.progress ? [...s.lines.slice(0, -1), line] : [...s.lines, line] }
+      }
+      if (mode === 'end' && last && last.progress) {
+        return { lines: [...s.lines.slice(0, -1), { kind: last.kind, text: last.text }] }
+      }
+      if (mode === 'end') return { lines: [...s.lines, { kind, text: '' }] }
+      return { lines: [...s.lines, { kind, text }] }
+    }),
   // A finished run ends with a new prompt, like a terminal
   finish: (status, exitCode) =>
     set((s) => ({
