@@ -29,11 +29,68 @@ console.log = (...a) => send('out', a);
 console.info = (...a) => send('out', a);
 console.warn = (...a) => send('err', a);
 console.error = (...a) => send('err', a);
+
+// Like Node: the program is finished when its script has run AND nothing is still waiting
+// (timers, intervals, network requests). Otherwise async code would be cut off.
+let pending = 0;
+let scriptDone = false;
+let finished = false;
+const finishIfIdle = () => {
+  if (finished || !scriptDone || pending > 0) return;
+  finished = true;
+  postMessage({ type: 'done' });
+};
+
+const timers = new Set();
+const intervals = new Set();
+const realSetTimeout = self.setTimeout.bind(self);
+const realClearTimeout = self.clearTimeout.bind(self);
+const realSetInterval = self.setInterval.bind(self);
+const realClearInterval = self.clearInterval.bind(self);
+const realFetch = self.fetch.bind(self);
+
+self.setTimeout = (fn, ms, ...args) => {
+  pending++;
+  const id = realSetTimeout(() => {
+    timers.delete(id);
+    pending--;
+    try { fn(...args); } finally { finishIfIdle(); }
+  }, ms);
+  timers.add(id);
+  return id;
+};
+self.clearTimeout = (id) => {
+  if (timers.has(id)) { timers.delete(id); pending--; }
+  realClearTimeout(id);
+  finishIfIdle();
+};
+self.setInterval = (fn, ms, ...args) => {
+  pending++;
+  const id = realSetInterval(() => fn(...args), ms);
+  intervals.add(id);
+  return id;
+};
+self.clearInterval = (id) => {
+  if (intervals.has(id)) { intervals.delete(id); pending--; }
+  realClearInterval(id);
+  finishIfIdle();
+};
+self.fetch = (...args) => {
+  pending++;
+  return realFetch(...args).finally(() => { pending--; finishIfIdle(); });
+};
+
+// Errors in code that nobody awaits are shown instead of being lost
+self.addEventListener('unhandledrejection', (e) => {
+  send('err', [(e.reason && e.reason.message) || String(e.reason)]);
+});
+
 self.onmessage = async (e) => {
   try {
     const run = new Function('return (async () => {\\n' + e.data.code + '\\n})()');
     await run();
-    postMessage({ type: 'done' });
+    scriptDone = true;
+    finishIfIdle();
   } catch (err) {
     postMessage({ type: 'fail', text: String((err && err.message) || err) });
   }
