@@ -1,8 +1,11 @@
-import Editor, { DiffEditor } from '@monaco-editor/react'
+import Editor from '@monaco-editor/react'
+import { InlineDiff } from './InlineDiff'
 import { useAppStore } from '../store/useAppStore'
-import { X } from 'lucide-react'
+import { X, Check, Undo2, Redo2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { WelcomeScreen } from './WelcomeScreen'
+import { AutoApplyMenu } from './AutoApplyMenu'
+import { enableAutoApply } from '../lib/agent/autoApply'
 
 export function CodeEditor() {
   const {
@@ -12,10 +15,18 @@ export function CodeEditor() {
     closeTab,
     updateTabContent,
     pendingDiffs,
+    acceptDiff,
+    rejectDiff,
+    lastAccepted,
+    redoItem,
+    undoLastAccept,
+    redoLastUndo,
   } = useAppStore()
 
   const activeTab = openTabs.find((t) => t.path === activeTabPath)
   const activeDiff = pendingDiffs.find((d) => d.path === activeTabPath)
+  const canUndo = !!activeTab && lastAccepted?.path === activeTab.path
+  const canRedo = !!activeTab && redoItem?.path === activeTab.path
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117]">
@@ -54,27 +65,67 @@ export function CodeEditor() {
         ))}
       </div>
 
+      {/* Undo / Redo bar after an applied change */}
+      {!activeDiff && activeTab && (canUndo || canRedo) && (
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#161b22] border-b border-[#30363d] shrink-0">
+          <span className="text-xs text-[#8b949e]">
+            {canUndo ? `Change applied to ${activeTab.name}` : `Change undone in ${activeTab.name}`}
+          </span>
+          <div className="flex gap-1.5">
+            {canUndo && (
+              <button
+                onClick={undoLastAccept}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+              >
+                <Undo2 size={12} /> Undo
+              </button>
+            )}
+            {canRedo && (
+              <button
+                onClick={redoLastUndo}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+              >
+                <Redo2 size={12} /> Redo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Apply / Decline bar for a proposed change */}
+      {activeDiff && activeTab && (
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#161b22] border-b border-[#30363d] shrink-0">
+          <span className="text-xs text-[#8b949e]">Proposed change to {activeTab.name}</span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => acceptDiff(activeDiff.path)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded"
+            >
+              <Check size={12} /> Apply
+            </button>
+            <button
+              onClick={() => rejectDiff(activeDiff.path)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+            >
+              <X size={12} /> Decline
+            </button>
+            <AutoApplyMenu
+              onChoose={(scope) => {
+                enableAutoApply(scope)
+                // The change in front of you is applied too, since it belongs to this reply
+                acceptDiff(activeDiff.path)
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Editor area */}
       <div className="flex-1 relative">
         {!activeTab ? (
           <WelcomeScreen />
         ) : activeDiff ? (
-          <DiffEditor
-            height="100%"
-            language={activeTab.language}
-            original={activeDiff.original}
-            modified={activeDiff.modified}
-            theme="vs-dark"
-            options={{
-              readOnly: false,
-              renderSideBySide: true,
-              fontSize: 13,
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-            }}
-          />
+          <InlineDiff original={activeDiff.original} modified={activeDiff.modified} />
         ) : (
           <Editor
             height="100%"

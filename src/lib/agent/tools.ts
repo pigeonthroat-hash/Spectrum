@@ -1,6 +1,8 @@
 import { storageFor } from '../storage/active'
 import type { FileNode } from '../storage/types'
 import { addMemory, removeMemory } from './memory'
+import { useAppStore } from '../../store/useAppStore'
+import { isAutoApplyOn } from './autoApply'
 
 const MAX_TOOL_OUTPUT = 8000
 
@@ -85,6 +87,34 @@ export async function executeTool(
       const path = String(args.path ?? '').trim()
       await createNew(need(projectId), path, String(args.content ?? ''))
       return `Created ${path}.`
+    }
+    case 'edit_file': {
+      const path = String(args.path ?? '').trim()
+      const find = String(args.find ?? '')
+      const replace = String(args.replace ?? '')
+      if (!find) throw new Error('find must not be empty.')
+      const original = await storageFor(need(projectId)).readFile(path)
+      const count = original.split(find).length - 1
+      if (count === 0) {
+        throw new Error(`The text to find was not in ${path}. Read the file again and copy the exact text.`)
+      }
+      if (count > 1) {
+        throw new Error(`The text to find appears ${count} times in ${path}. Use a longer, unique piece of text.`)
+      }
+      const modified = original.replace(find, () => replace)
+      const store = useAppStore.getState()
+      store.setPendingDiffs([...store.pendingDiffs.filter((d) => d.path !== path), { path, original, modified }])
+      // Open the file so the proposed change shows in the editor
+      if (!store.openTabs.some((t) => t.path === path)) {
+        store.openFile(path, path.split('/').pop() ?? path, original)
+      } else {
+        store.setActiveTab(path)
+      }
+      if (isAutoApplyOn()) {
+        useAppStore.getState().acceptDiff(path)
+        return `Applied the change to ${path}. Continue with the next step.`
+      }
+      return `Proposed a change to ${path}. The user will apply or decline it in the editor.`
     }
     case 'remember':
       addMemory(memoryId, String(args.note ?? ''))

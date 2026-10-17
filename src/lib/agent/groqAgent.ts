@@ -82,6 +82,23 @@ const TOOL_SPECS = [
   {
     type: 'function',
     function: {
+      name: 'edit_file',
+      description:
+        'Propose a change to an existing file. Replaces the exact text in "find" with "replace". The user accepts or rejects it. "find" must match the file exactly once. After edit_file, follow the tool result. If it says proposed, say it is waiting for the user to apply it. If it says applied, say it is done and continue with the next step. Edit only the file the user is working on (Open file below), unless they name a different file. Words in the request are not a file name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: str('File path'),
+          find: str('Exact text to replace, copied from read_file, including spaces'),
+          replace: str('New text'),
+        },
+        required: ['path', 'find', 'replace'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'remember',
       description: 'Save a short note for future chats.',
       parameters: {
@@ -130,7 +147,7 @@ function buildGroqSystemPrompt(opts: {
     'Use the provided tools when the request needs project files, running code, or a calculation.',
     'Use run_python for any math. Do not calculate yourself.',
     'Never invent file contents. Read a file before describing it.',
-    'create_file only makes new files. Existing files cannot be edited yet; show suggested changes as code in your reply.',
+    'To change an existing file, read it first, then use edit_file. The user reviews the change before it is applied. Use create_file only for new files.',
     'When you have the answer, reply in plain text.',
   ]
   if (opts.memory.length) lines.push('', 'Notes from earlier chats:', ...opts.memory.map((n) => `- ${n}`))
@@ -148,15 +165,17 @@ function appendText(blocks: Block[], delta: string): Block[] {
   return [...blocks, { type: 'text', text: delta }]
 }
 
-async function callGroq(apiKey: string, model: string, messages: ApiMessage[]) {
+async function callGroq(apiKey: string, model: string, messages: ApiMessage[], signal?: AbortSignal) {
   let res: Response
   try {
     res = await fetch(`${GROQ_PROXY_URL}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model, messages, tools: TOOL_SPECS, tool_choice: 'auto', max_tokens: 2000 }),
+      signal,
     })
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err
     throw new Error("Can't reach Groq. Check your internet connection.")
   }
   if (!res.ok) {
@@ -221,8 +240,11 @@ export async function runGroqAgent(opts: {
   userText: string
   activeFileName: string | null
   setBlocks: Setter
+  signal?: AbortSignal
 }): Promise<void> {
-  const { projectId, setBlocks } = opts
+  const { projectId, setBlocks, signal } = opts
+  if (signal?.aborted) return
+
   const apiKey = await getSignedInToken()
   const model = opts.modelId.slice('groq/'.length)
 
@@ -239,7 +261,15 @@ export async function runGroqAgent(opts: {
   ]
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const reply = await callGroq(apiKey, model, convo)
+    if (signal?.aborted) return
+
+    let reply: { content?: string | null; tool_calls?: ToolCall[] }
+    try {
+      reply = await callGroq(apiKey, model, convo, signal)
+    } catch (err) {
+      if (signal?.aborted) return
+      throw err
+    }
     const toolCalls = reply.tool_calls ?? []
 
     if (reply.content && reply.content.trim()) {
@@ -251,6 +281,7 @@ export async function runGroqAgent(opts: {
     convo.push({ role: 'assistant', content: reply.content ?? null, tool_calls: toolCalls })
 
     for (const call of toolCalls) {
+      if (signal?.aborted) return
       const { block, output, ok } = await runOneTool(call, projectId)
       setBlocks((bs) => [...bs, block])
       const finished = { ...block, output, status: ok ? ('done' as const) : ('error' as const) }

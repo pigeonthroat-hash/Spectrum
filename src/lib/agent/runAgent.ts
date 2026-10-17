@@ -118,11 +118,14 @@ export async function runAgent(opts: {
   userText: string
   activeFileName: string | null
   setBlocks: Setter
+  signal?: AbortSignal
 }): Promise<void> {
   // Groq models use native tool calling (see groqAgent.ts). Everything else uses the text-tag loop below.
   if (opts.modelId.startsWith('groq/')) return runGroqAgent(opts)
 
-  const { projectId, setBlocks } = opts
+  const { projectId, setBlocks, signal } = opts
+  if (signal?.aborted) return
+
   const memory = projectId ? loadMemory(projectId) : []
   const files = projectId ? await listPaths(projectId).catch(() => [] as string[]) : []
 
@@ -151,20 +154,36 @@ export async function runAgent(opts: {
   }
 
   for (let step = 0; step < MAX_STEPS; step++) {
+    if (signal?.aborted) return
+
     let text = ''
-    await streamModel({
-      modelId: opts.modelId,
-      messages: convo,
-      stop: STOP,
-      maxTokens: 900,
-      onToken: (t) => {
-        text += t
-        pendingText += t
-        if (timer === null) timer = window.setTimeout(flush, FLUSH_MS)
-      },
-    })
+    try {
+      await streamModel({
+        modelId: opts.modelId,
+        messages: convo,
+        stop: STOP,
+        maxTokens: 900,
+        signal,
+        onToken: (t) => {
+          text += t
+          pendingText += t
+          if (timer === null) timer = window.setTimeout(flush, FLUSH_MS)
+        },
+      })
+    } catch (err) {
+      // Stop pressed: keep what was written so far. Any other error goes up to the chat.
+      if (signal?.aborted) {
+        cancelFlush()
+        flush()
+        return
+      }
+      throw err
+    }
     cancelFlush()
     flush()
+
+    // Stop pressed while the model was writing: do not run any tool
+    if (signal?.aborted) return
 
     const call = findCall(text)
     if (!call) return

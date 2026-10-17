@@ -94,6 +94,10 @@ interface AppState {
   acceptDiff: (path: string) => void
   rejectDiff: (path: string) => void
   acceptAllDiffs: () => void
+  lastAccepted: { path: string; before: string; after: string } | null
+  redoItem: { path: string; before: string; after: string } | null
+  undoLastAccept: () => void
+  redoLastUndo: () => void
   rejectAllDiffs: () => void
 
   // Actions: panels
@@ -127,6 +131,8 @@ export const useAppStore = create<AppState>()(
       selectedModel: 'browser/Llama-3.2-3B-Instruct-q4f16_1-MLC',
       mode: 'agent',
       pendingDiffs: [],
+      lastAccepted: null,
+      redoItem: null,
 
       sidebarWidth: 380,
       explorerWidth: 260,
@@ -228,6 +234,8 @@ export const useAppStore = create<AppState>()(
             t.path === path ? { ...t, content: diff.modified, isDirty: true } : t
           ),
           pendingDiffs: pendingDiffs.filter((d) => d.path !== path),
+          lastAccepted: { path, before: openTabs.find((t) => t.path === path)?.content ?? diff.original, after: diff.modified },
+          redoItem: null,
         })
       },
 
@@ -246,6 +254,26 @@ export const useAppStore = create<AppState>()(
       },
 
       rejectAllDiffs: () => set({ pendingDiffs: [] }),
+
+      undoLastAccept: () => {
+        const last = get().lastAccepted
+        if (!last) return
+        set({
+          openTabs: get().openTabs.map((t) => (t.path === last.path ? { ...t, content: last.before, isDirty: true } : t)),
+          lastAccepted: null,
+          redoItem: last,
+        })
+      },
+
+      redoLastUndo: () => {
+        const item = get().redoItem
+        if (!item) return
+        set({
+          openTabs: get().openTabs.map((t) => (t.path === item.path ? { ...t, content: item.after, isDirty: true } : t)),
+          lastAccepted: item,
+          redoItem: null,
+        })
+      },
 
       setSidebarWidth: (w) => set({ sidebarWidth: w }),
       setExplorerWidth: (w) => set({ explorerWidth: w }),

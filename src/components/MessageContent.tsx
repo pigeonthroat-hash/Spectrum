@@ -30,20 +30,28 @@ function splitParts(text: string): Part[] {
   return parts
 }
 
-// Inline `code` becomes a small monospace chip
+// Inline `code` becomes a monospace chip, and **bold** becomes bold
 function InlineText({ text }: { text: string }) {
-  const pieces = text.split(/(`[^`\n]+`)/g)
+  const pieces = text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g)
   return (
     <>
-      {pieces.map((p, i) =>
-        p.startsWith('`') && p.endsWith('`') && p.length > 2 ? (
-          <code key={i} className="px-1 py-0.5 rounded bg-[#21262d] text-[12px] font-mono text-[#e6edf3]">
-            {p.slice(1, -1)}
-          </code>
-        ) : (
-          <span key={i}>{p}</span>
-        )
-      )}
+      {pieces.map((p, i) => {
+        if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
+          return (
+            <strong key={i} className="font-semibold text-white">
+              {p.slice(2, -2)}
+            </strong>
+          )
+        }
+        if (p.startsWith('`') && p.endsWith('`') && p.length > 2) {
+          return (
+            <code key={i} className="px-1 py-0.5 rounded bg-[#21262d] text-[12px] font-mono text-[#e6edf3]">
+              {p.slice(1, -1)}
+            </code>
+          )
+        }
+        return <span key={i}>{p}</span>
+      })}
     </>
   )
 }

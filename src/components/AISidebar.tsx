@@ -9,6 +9,7 @@ import { errorText } from '../lib/errors'
 import { listPaths } from '../lib/agent/tools'
 import { storageFor } from '../lib/storage/active'
 import { MessageContent } from './MessageContent'
+import { markReplyStarted } from '../lib/agent/autoApply'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 
 // Only the last few messages are sent to the model, to keep requests small
@@ -130,6 +131,7 @@ export function AISidebar() {
 
     const controller = new AbortController()
     abortRef.current = controller
+    markReplyStarted(assistantId)
 
     try {
       await runAgent({
