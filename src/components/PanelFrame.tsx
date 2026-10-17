@@ -1,6 +1,7 @@
 import type { ReactNode, PointerEvent as ReactPointerEvent } from 'react'
 import { GripVertical, Maximize2, Minimize2, Minus, X } from 'lucide-react'
 import { useAppStore, type PanelId } from '../store/useAppStore'
+import { requestClose } from '../lib/closing'
 import { useDragStore } from '../lib/dragStore'
 import { beginPointerDrag } from '../lib/pointerDrag'
 
@@ -10,7 +11,6 @@ export function PanelFrame({ id, title, children }: { id: PanelId; title: string
   const maximized = useAppStore((s) => s.maximized)
   const toggleMaximized = useAppStore((s) => s.toggleMaximized)
   const setCollapsed = useAppStore((s) => s.setCollapsed)
-  const hidePanel = useAppStore((s) => s.hidePanel)
   const isMaximized = maximized === id
 
   const onHeaderPointerDown = (e: ReactPointerEvent) => {
@@ -54,7 +54,7 @@ export function PanelFrame({ id, title, children }: { id: PanelId; title: string
           <HeaderButton title="Collapse" onClick={() => setCollapsed(id, true)}>
             <Minus size={12} />
           </HeaderButton>
-          <HeaderButton title="Close" onClick={() => hidePanel(id)}>
+          <HeaderButton title="Close" onClick={() => requestClose(id)}>
             <X size={12} />
           </HeaderButton>
         </div>

@@ -10,6 +10,8 @@ import { useToolToggles, isToolOn } from '../tools/toggles'
 import { MODE_HINTS } from './protocol'
 import { runPython, pythonRunStats } from '../python/pyRunner'
 import { clearReadCache } from './readCache'
+import { awaitRunApproval, startRunReply } from './runApproval'
+import { noteGroqUsage } from '../providers/groqUsage'
 import { useAppStore } from '../../store/useAppStore'
 import { errorText } from '../errors'
 import { GROQ_PROXY_URL, getSignedInToken } from '../providers/groqProxy'
@@ -96,9 +98,9 @@ function buildSystemPrompt(opts: {
     'You are Spectrum, a coding assistant inside a code editor.',
     'Mode: ' + MODE_HINTS[opts.mode],
     'Most messages need no tools. Answer greetings and simple questions normally.',
-    'For work on project files, prefer run_python. One run_python call can do many things, so use one call instead of several separate ones.',
+    'Use read_file or list_files for one file or a file list. Use run_python only when a task needs several files at once, copying, zipping, or code to run. One run_python call can do many things.',
     'The Python helpers below are already defined. Call them directly with await. Do NOT import them (no "from functions import ...").',
-    'Do NOT use os, pathlib or open() for project files: they see an empty sandbox, not the project. Use list_files() and read_file().',
+    'open() and os can read project files, but changes made that way do not change the project. To change a file, use write_file or edit_file.',
     'Python helpers (always use await):',
     '- read_files(["a.ts", "b.ts"]) returns a dict of {path: text}. Use this to read several files at once.',
     '- read_file(path, start, end), list_files()',
@@ -118,6 +120,9 @@ function buildSystemPrompt(opts: {
     'After writing Python, run it and check the result. If it errors, fix it and run again. Do not repeat a failing call unchanged.',
     'After an edit, "proposed" means the user still has to accept it, so say so. "applied" means it is done.',
     'After every edit or Python change, read its result. If it shows an error or was not applied, fix it before going on. Never say a change was made unless the result says so.',
+    'Before any tool call or Python run, write one short sentence saying what you are about to do.',
+    'Use Python only when the task needs code to run: calculations, checking code, or many files at once. Do not run Python just to test or print nothing.',
+    'To create a new file, use write_file or create_file directly, not Python.',
     'Keep replies short.',
     'If the user asks for something no tool can do yet, say which tool is not available. Do not answer from memory as if you had checked.',
   ]
@@ -146,6 +151,7 @@ async function callGroq(
   model: string,
   messages: ApiMessage[],
   signal: AbortSignal | undefined,
+  onText: (delta: string) => void,
   attempt = 0
 ): Promise<{ content?: string | null; tool_calls?: ToolCall[] }> {
   const gap = lastCallAt + MIN_GAP_MS - Date.now()
@@ -162,6 +168,7 @@ async function callGroq(
         model,
         messages,
         ...(specs.length > 0 ? { tools: specs, tool_choice: 'auto' } : {}),
+        stream: true,
         parallel_tool_calls: true,
         max_tokens: 1500,
       }),
@@ -172,13 +179,14 @@ async function callGroq(
     throw new Error("Can't reach Groq. Check your internet connection.")
   }
 
+  noteGroqUsage(res)
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     if (res.status === 429) {
       const seconds = Number(detail.match(/try again in ([\d.]+)s/i)?.[1] ?? DEFAULT_WAIT_S)
       if (attempt < 3 && seconds <= 60) {
         await sleep((seconds + 1) * 1000)
-        return callGroq(apiKey, model, messages, signal, attempt + 1)
+        return callGroq(apiKey, model, messages, signal, onText, attempt + 1)
       }
       throw new Error(
         `Groq's request limit is reached. Try again in about ${Math.ceil(seconds)} seconds, or pick another model.`
@@ -188,10 +196,57 @@ async function callGroq(
     throw new Error(`Groq returned ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ''}`)
   }
 
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string | null; tool_calls?: ToolCall[] } }[]
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('Groq sent an empty reply.')
+  const decoder = new TextDecoder()
+  const content: string[] = []
+  const calls = new Map<number, ToolCall>()
+  type Delta = {
+    choices?: {
+      delta?: {
+        content?: string | null
+        tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[]
+      }
+    }[]
   }
-  return json.choices?.[0]?.message ?? { content: null, tool_calls: [] }
+  const handle = (line: string) => {
+    if (!line.startsWith('data:')) return
+    const data = line.slice(5).trim()
+    if (!data || data === '[DONE]') return
+    let chunk: Delta
+    try {
+      chunk = JSON.parse(data) as Delta
+    } catch {
+      return
+    }
+    const delta = chunk.choices?.[0]?.delta
+    if (!delta) return
+    if (delta.content) {
+      content.push(delta.content)
+      onText(delta.content)
+    }
+    for (const tc of delta.tool_calls ?? []) {
+      const call = calls.get(tc.index) ?? { id: '', type: 'function' as const, function: { name: '', arguments: '' } }
+      if (tc.id) call.id = tc.id
+      if (tc.function?.name) call.function.name += tc.function.name
+      if (tc.function?.arguments) call.function.arguments += tc.function.arguments
+      calls.set(tc.index, call)
+    }
+  }
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    lines.forEach(handle)
+  }
+  handle(buffer)
+  return {
+    content: content.join(''),
+    tool_calls: [...calls.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]),
+  }
 }
 
 // Keeps the results of the latest step in full. Older results are dropped, oldest first,
@@ -216,7 +271,8 @@ function fitBudget(convo: ApiMessage[]): ApiMessage[] {
 
 async function runOneTool(
   call: ToolCall,
-  projectId: string | null
+  projectId: string | null,
+  setBlocks: Setter
 ): Promise<{ block: ToolBlock; output: string; ok: boolean }> {
   // Tools turned off in the @ menu are refused, even if the model asks for them
   if (!isToolOn(canonicalName(call.function.name))) {
@@ -240,8 +296,18 @@ async function runOneTool(
   if (call.function.name === 'run_python') {
     const code = String(args.code ?? '')
     const block: ToolBlock = { type: 'tool', id: call.id, kind: 'python', name: 'python', input: code, status: 'running' }
+    setBlocks((bs) => [...bs, block])
+    const decision = await awaitRunApproval(call.id, () =>
+      setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === block.id ? { ...b, status: 'awaiting' as const } : b)))
+    )
+    if (decision !== 'run') {
+      const output = decision === 'decline' ? 'The user declined to run this code.' : 'The run was cancelled.'
+      return { block, output, ok: false }
+    }
+    setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === block.id ? { ...b, status: 'running' as const } : b)))
     try {
-      const r = await runPython(projectId, code)
+      // streamToPanel: the output panel shows the run, and typed input goes to the program
+      const r = await runPython(projectId, code, undefined, true)
       const output = [r.output.trim(), r.error ?? ''].filter(Boolean).join('\n') || '(no output)'
       return { block, output, ok: !r.error }
     } catch (err) {
@@ -257,6 +323,7 @@ async function runOneTool(
     input: JSON.stringify(args),
     status: 'running',
   }
+  setBlocks((bs) => [...bs, block])
   try {
     return { block, output: await executeTool(projectId, call.function.name, args), ok: true }
   } catch (err) {
@@ -309,6 +376,27 @@ export async function runGroqAgent(opts: {
   if (signal?.aborted) return
   clearReadCache()
   rereadRuns = 0
+  startRunReply()
+
+  // Streamed text is shown in small batches, about 12 times a second
+  let pendingText = ''
+  let flushTimer: number | null = null
+  const flushText = () => {
+    flushTimer = null
+    if (!pendingText) return
+    const delta = pendingText
+    pendingText = ''
+    setBlocks((bs) => appendText(bs, delta))
+  }
+  const onText = (delta: string) => {
+    pendingText += delta
+    if (flushTimer === null) flushTimer = window.setTimeout(flushText, 80)
+  }
+  const flushNow = () => {
+    if (flushTimer !== null) window.clearTimeout(flushTimer)
+    flushTimer = null
+    flushText()
+  }
 
   const apiKey = await getSignedInToken()
   const model = opts.modelId.slice('groq/'.length)
@@ -344,19 +432,17 @@ export async function runGroqAgent(opts: {
 
     let reply: { content?: string | null; tool_calls?: ToolCall[] }
     try {
-      reply = await callGroq(apiKey, model, fitBudget(convo), signal)
+      reply = await callGroq(apiKey, model, fitBudget(convo), signal, onText)
     } catch (err) {
+      flushNow()
       if (signal?.aborted) return
       throw err
     }
+    flushNow()
     const toolCalls = reply.tool_calls ?? []
-
-    if (reply.content && reply.content.trim()) {
-      setBlocks((bs) => appendText(bs, reply.content as string))
-    }
     if (toolCalls.length === 0) return
 
-    convo.push({ role: 'assistant', content: reply.content ?? null, tool_calls: toolCalls })
+    convo.push({ role: 'assistant', content: reply.content || null, tool_calls: toolCalls })
 
     let fresh = 0
     for (const call of toolCalls) {
@@ -381,12 +467,12 @@ export async function runGroqAgent(opts: {
       }
       fresh++
 
-      const ran = await runOneTool(call, projectId)
+      const ran = await runOneTool(call, projectId, setBlocks)
       const block = ran.block
       const blocked = rereadBlocked(call)
       const output = blocked ? REREAD_BLOCKED : ran.output
       const ok = blocked ? false : ran.ok
-      setBlocks((bs) => [...bs, block])
+      setBlocks((bs) => (bs.some((b) => b.type === 'tool' && b.id === block.id) ? bs : [...bs, block]))
       const finished = { ...block, output, status: ok ? ('done' as const) : ('error' as const) }
       setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === block.id ? finished : b)))
 

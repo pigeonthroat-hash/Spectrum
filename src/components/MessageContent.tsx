@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, FilePlus } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { executeTool } from '../lib/agent/tools'
@@ -13,56 +13,91 @@ function defaultFileName(lang: string): string {
   return `example.${ext[lang.toLowerCase()] ?? 'txt'}`
 }
 
-type Part = { kind: 'text'; text: string } | { kind: 'code'; lang: string; code: string }
+type Part =
+  | { kind: 'text'; text: string; start: number }
+  | { kind: 'code'; lang: string; code: string; start: number }
 
 // Splits a reply into plain text and code blocks. An unfinished block (still streaming)
-// is shown as code, so the box appears while the model is typing.
+// is shown as code, so the box appears while the model is typing. Each part records where it starts in the reply.
 function splitParts(text: string): Part[] {
   const parts: Part[] = []
   const re = /```([\w+.-]*)[^\n]*\n([\s\S]*?)```/g
   let last = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(text))) {
-    if (m.index > last) parts.push({ kind: 'text', text: text.slice(last, m.index) })
-    parts.push({ kind: 'code', lang: m[1] || 'text', code: m[2].replace(/\n$/, '') })
+    if (m.index > last) parts.push({ kind: 'text', text: text.slice(last, m.index), start: last })
+    parts.push({ kind: 'code', lang: m[1] || 'text', code: m[2].replace(/\n$/, ''), start: m.index })
     last = re.lastIndex
   }
   const rest = text.slice(last)
   const open = rest.indexOf('```')
   if (open >= 0) {
-    if (open > 0) parts.push({ kind: 'text', text: rest.slice(0, open) })
+    if (open > 0) parts.push({ kind: 'text', text: rest.slice(0, open), start: last })
     const afterTicks = rest.slice(open + 3)
     const newline = afterTicks.indexOf('\n')
     const lang = newline >= 0 ? afterTicks.slice(0, newline).trim() : ''
     const code = newline >= 0 ? afterTicks.slice(newline + 1) : ''
-    parts.push({ kind: 'code', lang: lang || 'text', code })
+    parts.push({ kind: 'code', lang: lang || 'text', code, start: last + open })
   } else if (rest) {
-    parts.push({ kind: 'text', text: rest })
+    parts.push({ kind: 'text', text: rest, start: last })
   }
   return parts
 }
 
+// A word fades in the first time it appears. The choice is made once, when the word mounts, and kept.
+// Removing the fade class mid-animation would snap the word to full opacity, so later updates never touch it.
+// `at` is where the word starts in the reply; `reveal` is how much of the reply was shown before this update.
+function Word({ text, at, reveal }: { text: string; at: number; reveal: number }) {
+  const [delay] = useState<number | null>(() => {
+    if (at < reveal) return null
+    // Later words in the same update wait a little longer, so they appear one after another
+    return Math.min((at - reveal) / 6, 16) * 25
+  })
+  if (delay === null) return <span>{text}</span>
+  return (
+    <span className="word-in" style={{ animationDelay: `${delay}ms` }}>
+      {text}
+    </span>
+  )
+}
+
 // Inline `code` becomes a monospace chip, and **bold** becomes bold
-function InlineText({ text }: { text: string }) {
+function InlineText({ text, base, reveal }: { text: string; base: number; reveal: number }) {
   const pieces = text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g)
+  let offset = base
   return (
     <>
       {pieces.map((p, i) => {
+        const at = offset
+        offset += p.length
         if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
           return (
             <strong key={i} className="font-semibold text-white">
-              {p.slice(2, -2)}
+              <Word text={p.slice(2, -2)} at={at + 2} reveal={reveal} />
             </strong>
           )
         }
         if (p.startsWith('`') && p.endsWith('`') && p.length > 2) {
           return (
             <code key={i} className="px-1 py-0.5 rounded bg-[#21262d] text-[12px] font-mono text-[#e6edf3]">
-              {p.slice(1, -1)}
+              <Word text={p.slice(1, -1)} at={at + 1} reveal={reveal} />
             </code>
           )
         }
-        return <span key={i}>{p}</span>
+        let t = at
+        return (
+          <span key={i}>
+            {p.split(/(\s+)/).map((tok, k) => {
+              const here = t
+              t += tok.length
+              return tok.trim() ? (
+                <Word key={k} text={tok} at={here} reveal={reveal} />
+              ) : (
+                <span key={k}>{tok}</span>
+              )
+            })}
+          </span>
+        )
       })}
     </>
   )
@@ -128,22 +163,31 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
   )
 }
 
-// Renders an assistant reply: plain text with inline code, and code blocks with Copy and Apply buttons
-export function MessageContent({ text }: { text: string }) {
+// Renders an assistant reply: plain text with inline code, and code blocks with Copy and Apply buttons.
+// While the reply streams, new words fade in one after another.
+export function MessageContent({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  // How much of the reply was on screen before this update. A reply that is already finished shows everything at once.
+  const shownRef = useRef<number | null>(null)
+  if (shownRef.current === null) shownRef.current = streaming ? 0 : text.length
+  const reveal = shownRef.current
+  useEffect(() => {
+    shownRef.current = text.length
+  })
+
   const parts = splitParts(text)
   return (
     <div className="space-y-2">
-      {parts.map((p, i) =>
-        p.kind === 'text' ? (
-          p.text.trim() ? (
-            <div key={i} className="whitespace-pre-wrap leading-relaxed">
-              <InlineText text={p.text.trim()} />
-            </div>
-          ) : null
-        ) : (
-          <CodeBlock key={i} lang={p.lang} code={p.code} />
+      {parts.map((p, i) => {
+        if (p.kind !== 'text') return <CodeBlock key={i} lang={p.lang} code={p.code} />
+        const body = p.text.trim()
+        if (!body) return null
+        const lead = p.text.length - p.text.trimStart().length
+        return (
+          <div key={i} className="whitespace-pre-wrap leading-relaxed">
+            <InlineText text={body} base={p.start + lead} reveal={reveal} />
+          </div>
         )
-      )}
+      })}
     </div>
   )
 }

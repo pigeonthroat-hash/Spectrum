@@ -70,7 +70,7 @@ export function AccountButton() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-64 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl p-3 text-xs text-[#e6edf3]">
+        <div className="anim-pop absolute right-0 top-full mt-1 w-64 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl p-3 text-xs text-[#e6edf3]">
           {!supabaseConfigured ? (
             <p className="text-[#8b949e]">Cloud accounts are not set up in this build.</p>
           ) : user ? (

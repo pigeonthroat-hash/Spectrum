@@ -29,3 +29,10 @@ export function removeMemory(id: string, match: string): number {
   save(id, kept)
   return notes.length - kept.length
 }
+
+// Replaces one saved note with new text
+export function replaceMemory(id: string, oldNote: string, newNote: string): void {
+  const clean = newNote.trim().slice(0, 200)
+  if (!clean) throw new Error('The note is empty.')
+  save(id, loadMemory(id).map((n) => (n === oldNote ? clean : n)))
+}

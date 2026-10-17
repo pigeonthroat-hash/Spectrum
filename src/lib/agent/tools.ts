@@ -153,6 +153,10 @@ export async function executeTool(
     case 'write_file': {
       // Full rewrite of an existing file. Goes through the same review as edit_file.
       const path = String(args.path ?? '').trim()
+      if (!(await listPaths(need(projectId))).includes(path)) {
+        // A new file goes through the same review as create_file
+        return executeTool(projectId, 'create_file', { path, content: String(args.content ?? '') })
+      }
       const original = await storageFor(need(projectId)).readFile(path)
       const modified = String(args.content ?? '')
       const store = useAppStore.getState()

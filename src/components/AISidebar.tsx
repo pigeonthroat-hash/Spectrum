@@ -240,7 +240,7 @@ export function AISidebar() {
               {blocks.map((b, j) =>
                 b.type === 'text' ? (
                   b.text.trim() ? (
-                    <div key={j} className="anim-fade-up"><MessageContent text={b.text.trim()} /></div>
+                    <div key={j}><MessageContent text={b.text.trim()} streaming={pending} /></div>
                   ) : null
                 ) : (
                   <ToolBlock key={b.id} block={b} />

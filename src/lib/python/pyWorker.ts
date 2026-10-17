@@ -103,6 +103,27 @@ _sys.modules["functions"] = _mod
 _sys.modules["spectrum"] = _mod
 `
 
+// Copies the project's text files into Python's sandbox, so open() and os see them.
+// Only used for runs that need files. Changes made with open() stay in the sandbox; use write_file to change the project.
+const PROJECT_DIR = '/home/pyodide/project'
+const MAX_MOUNT_FILES = 60
+const MAX_MOUNT_CHARS = 200000
+
+async function mountProject(py: PyodideInterface): Promise<void> {
+  const all: string[] = JSON.parse(await fsCall('list', '[]'))
+  const paths = all.slice(0, MAX_MOUNT_FILES)
+  const texts: Record<string, string> = JSON.parse(await fsCall('read_many', JSON.stringify([paths])))
+  py.FS.mkdirTree(PROJECT_DIR)
+  for (const p of paths) {
+    const text = texts[p]
+    if (typeof text !== 'string' || text.startsWith('ERROR:') || text.length > MAX_MOUNT_CHARS) continue
+    const full = `${PROJECT_DIR}/${p}`
+    py.FS.mkdirTree(full.slice(0, full.lastIndexOf('/')))
+    py.FS.writeFile(full, text)
+  }
+  await py.runPythonAsync(`import os\nos.chdir(${JSON.stringify(PROJECT_DIR)})`)
+}
+
 let pyodidePromise: Promise<PyodideInterface> | null = null
 
 function getPyodide(): Promise<PyodideInterface> {
@@ -191,6 +212,7 @@ self.addEventListener('message', async (e: MessageEvent) => {
           return readLine(msg.token + '-' + inputs, msg.stdinPath)
         },
       })
+      if (/\bopen\s*\(|\bos\.|\bpathlib\b|\bglob\b/.test(msg.code)) await mountProject(py)
       await py.runPythonAsync(msg.code)
       sendPartial('out')
       sendPartial('err')

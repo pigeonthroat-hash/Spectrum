@@ -1,4 +1,4 @@
-import { listPaths, readLines, createNew, executeTool } from '../agent/tools'
+import { listPaths, readLines, executeTool } from '../agent/tools'
 import { errorText } from '../errors'
 import { storageFor } from '../storage/active'
 import { cachedText, rememberText, cachedListing, rememberListing, clearReadCache } from '../agent/readCache'
@@ -136,16 +136,14 @@ async function handleFs(projectId: string | null, op: string, argsJson: string):
     }
     case 'create': {
       const [path, content] = args as [string, string]
-      await createNew(projectId, safePath(path), content)
-      return 'ok'
+      return executeTool(projectId, 'create_file', { path: safePath(path), content })
     }
     case 'write': {
       // New file: created. Existing file: a full-rewrite proposal the user reviews.
       const [path, content] = args as [string, string]
       const clean = safePath(path)
       if (!(await listPaths(projectId)).includes(clean)) {
-        await createNew(projectId, clean, content)
-        return `Created ${clean}.`
+        return executeTool(projectId, 'create_file', { path: clean, content })
       }
       return executeTool(projectId, 'write_file', { path: clean, content })
     }

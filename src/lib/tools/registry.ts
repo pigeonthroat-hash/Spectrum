@@ -175,7 +175,7 @@ const RAW_TOOLS: ToolDef[] = [
   // Python: calculations, checking code, and file jobs
   {
     name: 'run_python', category: 'system', risky: false, available: true,
-    description: 'Run Python and return its printed output. Use it for calculations, checking code, and file jobs (read_files, write_file, copy_file, zip_files, list_files, read_file).',
+    description: 'Run Python and return its printed output. Use only when needed: several files at once, copying or zipping, calculations, or checking code. Print what you need to see.',
     params: { code: str('Python code. Use print() to show results.') },
     required: ['code'],
     run: async (projectId, args) => {

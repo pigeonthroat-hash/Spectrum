@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAppStore, type PanelId } from '../store/useAppStore'
 import { useDragStore } from '../lib/dragStore'
+import { useClosing, CLOSE_MS } from '../lib/closing'
 import { PanelFrame } from './PanelFrame'
 import { MobileWorkspace } from './MobileWorkspace'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -10,6 +11,7 @@ import { AISidebar } from './AISidebar'
 import { CodeEditor } from './CodeEditor'
 
 const MIN_WIDTH = 180
+const STRIP_WIDTH = 28 // width of the collapsed strip
 const DEFAULT_WIDTH: Record<PanelId, number> = { explorer: 260, chat: 380 }
 const TITLE: Record<PanelId, string> = { explorer: 'Explorer', chat: 'Chat' }
 
@@ -38,6 +40,7 @@ export function Workspace() {
   const explorerWidth = useAppStore((s) => s.explorerWidth)
   const sidebarWidth = useAppStore((s) => s.sidebarWidth)
   const maximized = useAppStore((s) => s.maximized)
+  const closing = useClosing((s) => s.closing)
 
   const isVisible = (id: PanelId) => (id === 'explorer' ? showExplorer : showAI)
   const isCollapsed = (id: PanelId) => (id === 'explorer' ? explorerCollapsed : chatCollapsed)
@@ -56,12 +59,32 @@ export function Workspace() {
   const leftExpanded = isVisible(leftPanel) && !isCollapsed(leftPanel)
   const rightExpanded = isVisible(rightPanel) && !isCollapsed(rightPanel)
 
+  // The panel stays mounted. Collapsing animates the slot's width down to the strip, so the panel slides closed.
   const renderSlot = (id: PanelId, side: 'left' | 'right') => {
     if (!isVisible(id)) return null
-    if (isCollapsed(id)) return <CollapsedStrip id={id} side={side} />
+    const collapsed = isCollapsed(id)
+    const width = id === 'explorer' ? explorerWidth : sidebarWidth
+    const anchor = side === 'left' ? 'left-0' : 'right-0'
+    const leaving = closing === id
     return (
-      <div style={{ width: id === 'explorer' ? explorerWidth : sidebarWidth }} className="shrink-0 min-w-0 h-full">
-        <PanelContent id={id} />
+      <div
+        className="relative shrink-0 h-full overflow-hidden min-w-0"
+        style={{
+          width: leaving ? 0 : collapsed ? STRIP_WIDTH : width,
+          transition: `width ${CLOSE_MS}ms cubic-bezier(0.2, 0.7, 0.2, 1)`,
+        }}
+      >
+        <div
+          className={`absolute top-0 bottom-0 ${anchor}`}
+          style={{
+            width,
+            transform: leaving ? `translateX(${side === 'left' ? '-100%' : '100%'})` : 'none',
+            transition: `transform ${CLOSE_MS}ms cubic-bezier(0.2, 0.7, 0.2, 1)`,
+          }}
+        >
+          <PanelContent id={id} />
+        </div>
+        <CollapsedStrip id={id} side={side} open={collapsed && !leaving} />
       </div>
     )
   }
@@ -124,14 +147,16 @@ function Splitter({ onResize, onReset }: { onResize: (dx: number) => void; onRes
 }
 
 // A collapsed panel is a thin strip. Click it to expand.
-function CollapsedStrip({ id, side }: { id: PanelId; side: 'left' | 'right' }) {
+function CollapsedStrip({ id, side, open }: { id: PanelId; side: 'left' | 'right'; open: boolean }) {
   const setCollapsed = useAppStore((s) => s.setCollapsed)
   const Icon = side === 'left' ? ChevronRight : ChevronLeft
   return (
     <button
       onClick={() => setCollapsed(id, false)}
       title={`Expand ${TITLE[id]}`}
-      className="anim-slide-left w-7 shrink-0 h-full flex flex-col items-center gap-3 py-3 bg-[#161b22] border-x border-[#30363d] text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+      tabIndex={open ? 0 : -1}
+      className={`absolute top-0 bottom-0 ${side === 'left' ? 'left-0' : 'right-0'} w-7 flex flex-col items-center gap-3 py-3 bg-[#161b22] border-x border-[#30363d] text-[#8b949e] hover:text-white hover:bg-[#21262d]`}
+      style={{ opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none', transition: 'opacity 180ms ease-out' }}
     >
       <Icon size={14} />
       <span className="text-[11px] uppercase tracking-wider" style={{ writingMode: 'vertical-rl' }}>

@@ -5,7 +5,8 @@ import { cn } from '../lib/utils'
 import { BrowserModelsSection } from './BrowserModelsSection'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 import { getForever, setForever } from '../lib/agent/autoApply'
-import { loadMemory, removeMemory } from '../lib/agent/memory'
+import { loadMemory, removeMemory, replaceMemory } from '../lib/agent/memory'
+import { Pencil, Check as CheckIcon, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 type Tab = 'general' | 'models' | 'memory'
@@ -44,6 +45,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     void supabase?.auth.getSession().then(({ data }) => setEmail(data.session?.user.email ?? null))
   }, [open, projectId])
 
+  const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+
   if (!open) return null
 
   const toggleForever = () => {
@@ -56,6 +60,17 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     setEmail(null)
   }
 
+  const saveEdit = (note: string) => {
+    if (!projectId) return
+    try {
+      replaceMemory(projectId, note, draft)
+    } catch {
+      return
+    }
+    setEditing(null)
+    setNotes(loadMemory(projectId))
+  }
+
   const deleteNote = (note: string) => {
     if (!projectId) return
     removeMemory(projectId, note)
@@ -63,9 +78,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onMouseDown={onClose}>
+    <div className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50" onMouseDown={onClose}>
       <div
-        className="w-[640px] max-w-[94vw] h-[460px] max-h-[88vh] flex flex-col bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl"
+        className="anim-pop w-[640px] max-w-[94vw] h-[460px] max-h-[88vh] flex flex-col bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d]">
@@ -212,7 +227,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               <section>
                 <p className={sectionTitle}>Memory</p>
                 <p className={sectionText}>
-                  Notes the AI saved for this project. Delete any note the AI should no longer use.
+                  Notes the AI saved for this project. Edit or delete any note the AI saved.
                 </p>
                 {!projectId && <p className="mt-3 text-xs text-[#8b949e]">Open a project to see its memory.</p>}
                 {projectId && notes.length === 0 && (
@@ -224,14 +239,57 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                       key={i}
                       className="flex items-start justify-between gap-2 px-2.5 py-2 rounded border border-[#30363d] bg-[#0d1117]"
                     >
-                      <span className="text-xs text-[#e6edf3] break-words">{note}</span>
-                      <button
-                        onClick={() => deleteNote(note)}
-                        title="Delete note"
-                        className="shrink-0 p-1 rounded text-[#8b949e] hover:text-[#ff7b72] hover:bg-[#21262d]"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {editing === i ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(note)
+                              if (e.key === 'Escape') setEditing(null)
+                            }}
+                            className="flex-1 bg-transparent text-xs text-[#e6edf3] outline-none border-b border-[#58a6ff]"
+                          />
+                          <button
+                            onClick={() => saveEdit(note)}
+                            title="Save note"
+                            className="shrink-0 p-1 rounded text-[#8b949e] hover:text-[#3fb950] hover:bg-[#21262d]"
+                          >
+                            <CheckIcon size={12} />
+                          </button>
+                          <button
+                            onClick={() => setEditing(null)}
+                            title="Cancel"
+                            className="shrink-0 p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+                          >
+                            <XIcon size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs text-[#e6edf3] break-words">{note}</span>
+                          <div className="flex shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditing(i)
+                                setDraft(note)
+                              }}
+                              title="Edit note"
+                              className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <button
+                              onClick={() => deleteNote(note)}
+                              title="Delete note"
+                              className="p-1 rounded text-[#8b949e] hover:text-[#ff7b72] hover:bg-[#21262d]"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>

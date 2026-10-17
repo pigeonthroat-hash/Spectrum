@@ -1,5 +1,5 @@
 // What a chat message is made of: plain text, or a tool/Python run shown as a collapsible row
-export type ToolStatus = 'running' | 'done' | 'error'
+export type ToolStatus = 'running' | 'awaiting' | 'done' | 'error'
 
 export interface TextBlock {
   type: 'text'
