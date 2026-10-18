@@ -1,3 +1,7 @@
+import { Circle, SplitSquareHorizontal } from 'lucide-react'
+import { setRevealEditor } from '../lib/editor/reveal'
+import { attachEditorStatus } from '../lib/editor/status'
+import { ChevronRight } from 'lucide-react'
 import { isBinaryName } from '../lib/files/kinds'
 import { FileViewer } from './FileViewer'
 import Editor from '@monaco-editor/react'
@@ -6,7 +10,6 @@ import { useAppStore } from '../store/useAppStore'
 import { X, Check, Undo2, Redo2, Play, Eye } from 'lucide-react'
 import { runActiveFile } from '../lib/run/runActive'
 import { registerEditorActions } from '../lib/run/editorActions'
-import { OutputPanel } from './OutputPanel'
 import { cn } from '../lib/utils'
 import { WelcomeScreen } from './WelcomeScreen'
 import { AutoApplyMenu } from './AutoApplyMenu'
@@ -55,23 +58,40 @@ export function CodeEditor() {
             onClick={() => setActiveTab(tab.path)}
           >
             <FileIcon name={tab.name} />
-            <span className="truncate max-w-[140px]">
-              {tab.isDirty && <span className="text-[#3fb950] mr-1">●</span>}
-              {tab.name}
-            </span>
+            <span className="truncate max-w-[140px]">{tab.name}</span>
             <button
-              className="opacity-0 group-hover:opacity-100 hover:bg-[#30363d] rounded p-0.5"
+              type="button"
+              title={tab.isDirty ? 'Unsaved changes' : 'Close'}
+              className={cn(
+                'shrink-0 p-0.5 rounded hover:bg-[#30363d]',
+                tab.isDirty ? '' : activeTabPath === tab.path ? '' : 'opacity-0 group-hover:opacity-100'
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 closeTab(tab.path)
               }}
             >
-              <X size={12} />
+              {tab.isDirty ? (
+                <>
+                  <Circle size={8} className="fill-current text-[#e6e6e6] group-hover:hidden" />
+                  <X size={12} className="hidden group-hover:block" />
+                </>
+              ) : (
+                <X size={12} />
+              )}
             </button>
           </div>
         ))}
         {/* Run button: Preview for HTML, Run for everything else */}
         <div className="ml-auto flex items-center px-2 shrink-0">
+          <button
+            type="button"
+            disabled
+            title="Split editor (coming later)"
+            className="p-1.5 rounded text-[#484f58] cursor-not-allowed"
+          >
+            <SplitSquareHorizontal size={14} />
+          </button>
           <button
             type="button"
             onClick={() => void runActiveFile()}
@@ -84,6 +104,18 @@ export function CodeEditor() {
           </button>
         </div>
       </div>
+
+      {/* Breadcrumbs, like Cursor: folders, then the file */}
+      {activeTab && (
+        <div className="flex items-center gap-1 px-3 h-6 min-w-0 text-[11px] text-[#8b949e] bg-[#0d1117] border-b border-[#21262d]">
+          {activeTab.path.split('/').map((seg, i, all) => (
+            <span key={i} className="flex items-center gap-1 min-w-0">
+              {i > 0 && <ChevronRight size={10} className="shrink-0 text-[#6e7681]" />}
+              <span className={cn('truncate', i === all.length - 1 && 'text-[#c9d1d9]')}>{seg}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Undo / Redo bar after an applied change */}
       {!activeDiff && activeTab && (canUndo || canRedo) && (
@@ -151,9 +183,15 @@ export function CodeEditor() {
         ) : (
           <Editor
             height="100%"
+            // One Monaco model per file: each file keeps its own undo history
+            path={activeTab.path}
             language={activeTab.language}
             value={activeTab.content}
-            onMount={(editor) => registerEditorActions(editor)}
+            onMount={(editor) => {
+              registerEditorActions(editor)
+              attachEditorStatus(editor)
+              setRevealEditor(editor)
+            }}
             theme="vs-dark"
             onChange={(value) => {
               if (value !== undefined) updateTabContent(activeTab.path, value)
@@ -173,7 +211,6 @@ export function CodeEditor() {
           />
         )}
       </div>
-      <OutputPanel />
     </div>
   )
 }

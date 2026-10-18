@@ -1,3 +1,4 @@
+import { ExplorerSections } from './ExplorerSections'
 import { isBinaryName } from '../lib/files/kinds'
 import { uploadFiles } from '../lib/files/upload'
 import { useFolderMenu } from '../lib/run/menuStore'
@@ -76,7 +77,7 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
           if (!isFolder || !e.dataTransfer.types.includes('Files') || !projectId) return
           e.preventDefault()
           e.stopPropagation()
-          void uploadFiles(Array.from(e.dataTransfer.files), projectId, node.path)
+          void uploadFiles(Array.from(e.dataTransfer.files), projectId)
         }}
         onContextMenu={(e) => {
           if (!isFolder) return
@@ -166,7 +167,7 @@ export function FileExplorer() {
   const setProject = useAppStore((s) => s.setProject)
   const openTabs = useAppStore((s) => s.openTabs)
 
-  const displayTree = useMemo(() => compactTree(fileTree), [fileTree])
+  const displayTree = useMemo(() => compactTree(fileTree.filter((n) => !n.name.startsWith('.'))), [fileTree])
 
   // Folders are open by default. This set holds the ones the user closed.
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
@@ -376,7 +377,10 @@ export function FileExplorer() {
     >
       {projectId && (
         <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-[#30363d]">
-          <span className="truncate text-xs text-[#e6edf3]">{projectName}</span>
+          <span className="flex items-center gap-0.5 min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-[#c9d1d9]">
+            <ChevronDown size={12} className="shrink-0" />
+            <span className="truncate">{projectName}</span>
+          </span>
           <div className="flex items-center gap-0.5 shrink-0">
             <button title="New file" onClick={() => create('file')} className="p-1 rounded hover:bg-[#21262d]">
               <FilePlus size={13} />
@@ -438,6 +442,7 @@ export function FileExplorer() {
           ))}
         </div>
       )}
+      {projectId && <ExplorerSections />}
     </div>
   )
 }

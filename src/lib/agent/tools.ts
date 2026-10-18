@@ -1,4 +1,5 @@
 import { storageFor } from '../storage/active'
+import { createProject } from '../storage/cloud'
 import { cachedText, rememberText } from './readCache'
 import type { FileNode } from '../storage/types'
 import { addMemory, removeMemory } from './memory'
@@ -9,7 +10,8 @@ import { runRegistryTool } from '../tools/registry'
 
 const MAX_TOOL_OUTPUT = 8000
 
-export async function listPaths(projectId: string): Promise<string[]> {
+// Every file, including hidden ones (chat storage uses them)
+export async function listAllPaths(projectId: string): Promise<string[]> {
   const tree = await storageFor(projectId).listTree()
   const paths: string[] = []
   const walk = (nodes: FileNode[]) => {
@@ -175,6 +177,13 @@ export async function executeTool(
       if (outcome === 'declined') return `The user declined the change to ${path}.`
       return `The change to ${path} was cancelled.`
     }
+    case 'create_workspace': {
+      if (projectId) throw new Error('A workspace is already open.')
+      const name = String(args.name ?? '').trim() || 'New workspace'
+      const row = await createProject(name)
+      useAppStore.getState().setProject(row.id, row.name)
+      return `Created and opened the workspace "${row.name}". Files can be created in it now.`
+    }
     case 'remember':
       addMemory(memoryId, String(args.note ?? ''))
       return 'Saved the note.'
@@ -185,4 +194,9 @@ export async function executeTool(
     default:
       return runRegistryTool(projectId, name, args)
   }
+}
+
+// The files the user and the AI should see: hidden files and folders (names starting with a dot) are left out
+export async function listPaths(projectId: string): Promise<string[]> {
+  return (await listAllPaths(projectId)).filter((p) => !p.split('/').some((seg) => seg.startsWith('.')))
 }

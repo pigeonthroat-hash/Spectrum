@@ -10,7 +10,7 @@ import { listPaths, executeTool } from '../agent/tools'
 export interface ToolDef {
   name: string
   aliases?: string[]
-  category: 'files' | 'search' | 'system' | 'web' | 'integrations'
+  category: 'files' | 'search' | 'system' | 'web' | 'integrations' | 'workspace'
   description: string
   params: Record<string, unknown>
   required: string[]
@@ -183,6 +183,15 @@ const RAW_TOOLS: ToolDef[] = [
       return [r.output.trim(), r.error ?? ''].filter(Boolean).join('\n') || '(no output)'
     },
   },
+  // Workspace
+  {
+    name: 'create_workspace', category: 'workspace', risky: false, available: true,
+    description: 'Create a new workspace (project) and open it. Use this only when the user explicitly asks for a workspace or project. Only works when no workspace is open.',
+    params: { name: str('Workspace name') },
+    required: ['name'],
+    run: (p, a) => executeTool(p, 'create_workspace', a),
+  },
+
   // Files
   {
     name: 'read_file', category: 'files', risky: false, available: true,

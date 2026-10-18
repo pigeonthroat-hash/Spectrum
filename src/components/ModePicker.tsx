@@ -14,9 +14,10 @@ interface ModePickerProps {
   value: AgentMode
   onChange: (mode: AgentMode) => void
   placement?: 'up' | 'down'
+  askOnly?: boolean
 }
 
-export function ModePicker({ value, onChange, placement = 'up' }: ModePickerProps) {
+export function ModePicker({ value, onChange, placement = 'up', askOnly = false }: ModePickerProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -58,13 +59,15 @@ export function ModePicker({ value, onChange, placement = 'up' }: ModePickerProp
                 key={m.id}
                 type="button"
                 onClick={() => {
+                  if (askOnly && m.id !== 'ask') return
                   onChange(m.id)
                   setOpen(false)
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#e6edf3] hover:bg-[#21262d]"
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#e6edf3] hover:bg-[#21262d] ${askOnly && m.id !== 'ask' ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <MIcon size={12} />
                 <span className="flex-1 text-left">{m.label}</span>
+                {m.id === 'agent' && <span className="text-[10px] text-[#6e7681]">Ctrl+I</span>}
                 {m.id === value && <Check size={12} className="text-[#3fb950]" />}
               </button>
             )

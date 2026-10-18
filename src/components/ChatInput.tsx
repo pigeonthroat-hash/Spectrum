@@ -16,6 +16,7 @@ interface ChatInputProps {
   disabled: boolean
   mode: AgentMode
   onModeChange: (mode: AgentMode) => void
+  askOnly?: boolean
   style: ChatStyle
   fileName: string | null
   useFile: boolean
@@ -32,6 +33,7 @@ export function ChatInput({
   disabled,
   mode,
   onModeChange,
+  askOnly,
   style,
   fileName,
   useFile,
@@ -181,31 +183,32 @@ export function ChatInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Plan, @ for context, / for commands"
+        placeholder="Plan, search, build anything"
         rows={1}
         className="w-full min-h-[20px] bg-transparent text-sm leading-5 text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none"
       />
 
-      {/* Bottom row: mode + model on the left, actions on the right */}
-      <div className="flex items-center justify-between gap-2 text-[11px] text-[#8b949e]">
+      {/* Bottom row, like Cursor: mode and model on the left, @, image, and send on the right */}
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1 min-w-0">
-          <ModePicker value={mode} onChange={onModeChange} placement="up" />
+          <ModePicker value={mode} onChange={onModeChange} placement="up" askOnly={askOnly} />
           <ModelPicker value={selectedModel} onChange={onModelChange} placement="up" />
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button type="button" onClick={mentionClick} title="Mention" className="p-1 rounded hover:text-white hover:bg-[#21262d]">
-            <AtSign size={13} />
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button" onClick={mentionClick} title="Mention" className="p-1.5 rounded-md text-[#8b949e] hover:text-white hover:bg-[#2a2f38]">
+            <AtSign size={14} />
           </button>
-          <button type="button" disabled title="Images (coming soon)" className="p-1 rounded disabled:opacity-50">
-            <ImageIcon size={13} />
+          <button type="button" disabled title="Images (coming soon)" className="p-1.5 rounded-md text-[#8b949e] disabled:opacity-40">
+            <ImageIcon size={14} />
           </button>
           <button
             type="button"
             onClick={onSend}
-            disabled={!value.trim() || disabled}
-            className="p-1.5 rounded-md bg-[#e6edf3] text-[#0d1117] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            disabled={(!value.trim() && attached.length === 0) || disabled}
+            title="Send"
+            className="ml-0.5 h-7 w-7 flex items-center justify-center rounded-full bg-[#e6e6e6] text-[#1c1f25] hover:bg-white disabled:bg-[#3a3f48] disabled:text-[#7d818c] transition-colors"
           >
-            <Send size={12} />
+            <Send size={13} />
           </button>
         </div>
       </div>
@@ -231,7 +234,7 @@ export function ChatInput({
       {isLiquid ? (
         <LiquidGlassBox>{content}</LiquidGlassBox>
       ) : (
-        <div className="rounded-md border border-[#30363d] bg-[#161b22] px-2 py-1.5">{content}</div>
+        <div className="rounded-xl border border-[#2c2f36] bg-[#1c1f25] px-3 py-2.5 shadow-sm">{content}</div>
       )}
     </div>
   )

@@ -1,69 +1,114 @@
-import { FolderMenu } from './components/FolderMenu'
-import { LanguageLabel } from './components/LanguageLabel'
 import { useEffect, useState } from 'react'
+import { ArrowLeft, ArrowRight, PanelBottom, PanelLeft, PanelRight, Search, Settings } from 'lucide-react'
 import { SettingsDialog } from './components/SettingsDialog'
 import logo from './assets/logo.png'
 import { AccountButton } from './components/AccountButton'
 import { SaveController } from './components/SaveController'
 import { Workspace } from './components/Workspace'
 import { DragGhost } from './components/DragGhost'
+import { ActivityBar } from './components/ActivityBar'
+import { StatusBar } from './components/StatusBar'
+import { BottomPanel } from './components/BottomPanel'
+import { Toasts } from './components/Toasts'
+import { QuickOpen } from './components/QuickOpen'
 import { useAppStore } from './store/useAppStore'
-import { PanelLeft, PanelRight, Settings } from 'lucide-react'
-
-const SAVE_LABEL: Record<string, string> = {
-  idle: 'Ready',
-  saving: 'Saving...',
-  saved: 'Saved to cloud',
-  error: 'Save failed',
-}
+import { requestClose } from './lib/closing'
+import { useBottomPanel } from './lib/panel/bottom'
+import { useQuickOpen } from './lib/editor/quickOpen'
 
 export default function App() {
   const showExplorer = useAppStore((s) => s.showExplorer)
   const showAI = useAppStore((s) => s.showAI)
+  const projectName = useAppStore((s) => s.projectName)
   const toggleExplorer = useAppStore((s) => s.toggleExplorer)
   const toggleAI = useAppStore((s) => s.toggleAI)
-  const saveStatus = useAppStore((s) => s.saveStatus)
+  const bottomOpen = useBottomPanel((s) => s.open)
   const [showSettings, setShowSettings] = useState(false)
 
-  // Ctrl+B toggles the explorer, Ctrl+Alt+B toggles the chat
+  // Hiding a panel slides it away first. Showing it is instant.
+  const togglePanel = (id: 'explorer' | 'chat') => {
+    const visible = id === 'explorer' ? showExplorer : showAI
+    if (visible) requestClose(id)
+    else if (id === 'explorer') toggleExplorer()
+    else toggleAI()
+  }
+
+  // Ctrl+B explorer, Ctrl+Alt+B chat, Ctrl+J bottom panel, Ctrl+P Quick Open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'b') {
         e.preventDefault()
-        if (e.altKey) toggleAI()
-        else toggleExplorer()
+        if (e.altKey) togglePanel('chat')
+        else togglePanel('explorer')
+      } else if (key === 'j' && !e.altKey) {
+        e.preventDefault()
+        useBottomPanel.getState().toggle()
+      } else if (key === 'p' && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        useQuickOpen.getState().setOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleExplorer, toggleAI])
+  }, [showExplorer, showAI, toggleExplorer, toggleAI])
 
   const toggleClass = (on: boolean) =>
     `p-1.5 rounded hover:bg-[#21262d] hover:text-white ${on ? 'text-white bg-[#21262d]' : 'text-[#8b949e]'}`
+  const navClass = 'p-1 rounded text-[#484f58] cursor-not-allowed'
 
   return (
     <div className="h-[100dvh] w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
-      {/* Top bar */}
-      <header className="h-9 flex items-center justify-between px-3 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
-        <div className="flex items-center gap-3">
+      {/* Title bar: navigation, command bar, and layout toggles, like Cursor */}
+      <header className="h-9 flex items-center gap-2 px-2 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <img src={logo} alt="" className="h-4 w-auto" />
           <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">Spectrum</span>
-          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">
+          <span className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">
             v0.1 · Free models
           </span>
+          <div className="hidden md:flex items-center gap-0.5 ml-1">
+            <button type="button" disabled title="Back (no history yet)" className={navClass}>
+              <ArrowLeft size={14} />
+            </button>
+            <button type="button" disabled title="Forward (no history yet)" className={navClass}>
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          {/* Panel toggles only on wider screens; phones use the bar at the bottom */}
+
+        {/* Command bar: opens Quick Open */}
+        <button
+          type="button"
+          onClick={() => useQuickOpen.getState().setOpen(true)}
+          title="Quick Open (Ctrl+P)"
+          className="hidden md:flex items-center gap-2 w-[min(420px,40vw)] h-6 px-2 rounded-md border border-[#30363d] bg-[#0d1117] text-[11px] text-[#8b949e] hover:border-[#484f58]"
+        >
+          <Search size={12} className="shrink-0" />
+          <span className="truncate flex-1 text-center">{projectName ?? 'Spectrum'}</span>
+        </button>
+
+        <div className="flex items-center gap-1 flex-1 justify-end min-w-0">
           <div className="hidden md:flex items-center gap-1">
-            <button onClick={toggleExplorer} className={toggleClass(showExplorer)} title="Toggle Explorer (Ctrl+B)">
+            <button type="button" onClick={() => togglePanel('explorer')} className={toggleClass(showExplorer)} title="Toggle Explorer (Ctrl+B)">
               <PanelLeft size={16} />
             </button>
-            <button onClick={toggleAI} className={toggleClass(showAI)} title="Toggle Chat (Ctrl+Alt+B)">
+            <button
+              type="button"
+              onClick={() => useBottomPanel.getState().toggle()}
+              className={toggleClass(bottomOpen)}
+              title="Toggle Panel (Ctrl+J)"
+            >
+              <PanelBottom size={16} />
+            </button>
+            <button type="button" onClick={() => togglePanel('chat')} className={toggleClass(showAI)} title="Toggle Chat (Ctrl+Alt+B)">
               <PanelRight size={16} />
             </button>
           </div>
           <AccountButton />
           <button
+            type="button"
             onClick={() => setShowSettings(true)}
             className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
             title="Settings"
@@ -73,24 +118,23 @@ export default function App() {
         </div>
       </header>
 
-      <Workspace />
+      <div className="flex flex-1 min-h-0 min-w-0">
+        <ActivityBar />
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
+          <div className="flex-1 flex min-h-0 min-w-0">
+            <Workspace />
+          </div>
+          <BottomPanel />
+        </div>
+      </div>
 
       <DragGhost />
       <SaveController />
       <SettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
+      <QuickOpen />
+      <Toasts />
 
-      {/* Status bar */}
-      <footer className="h-6 flex items-center justify-between px-3 border-t border-[#30363d] bg-[#161b22] text-[11px] text-[#8b949e] shrink-0">
-        <div className="flex items-center gap-3">
-          <span>{SAVE_LABEL[saveStatus]}</span>
-          <span className="hidden md:inline text-[#3fb950]">● Free models enabled</span>
-        </div>
-        <div className="hidden md:flex items-center gap-3">
-          <span>UTF-8</span>
-          <LanguageLabel />
-          <FolderMenu />
-        </div>
-      </footer>
+      <StatusBar />
     </div>
   )
 }

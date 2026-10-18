@@ -1,10 +1,12 @@
+import { ChevronDown } from 'lucide-react'
+import { Wrench } from 'lucide-react'
+import { useToolToggles } from '../lib/tools/toggles'
 import { useAttachments } from '../lib/chat/attachments'
 import { isBinaryName } from '../lib/files/kinds'
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { Loader2, Sparkles, Check, X, File, Square } from 'lucide-react'
+import { Loader2, Sparkles, File, Square } from 'lucide-react'
 import { ChatInput } from './ChatInput'
-import { ToolBlock } from './ToolBlock'
 import { runAgent } from '../lib/agent/runAgent'
 import { plainText, type Block } from '../lib/agent/types'
 import { errorText } from '../lib/errors'
@@ -15,6 +17,10 @@ import { markReplyStarted } from '../lib/agent/autoApply'
 import { cancelAllDecisions } from '../lib/agent/decisions'
 import { applyPending, declinePending } from '../lib/agent/applyChange'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
+import { ChatHeader } from './ChatHeader'
+import { StepsGroup, groupBlocks } from './StepsGroup'
+import { persistCurrentChat, ageChats, refreshChatList, useChatList } from '../lib/chats/chatStore'
+import { SessionsList } from './SessionsList'
 
 // Only the last few messages are sent to the model, to keep requests small
 const HISTORY_TURNS = 6
@@ -60,6 +66,17 @@ function friendlyError(err: unknown): string {
   return raw
 }
 
+// Totals for the pending changes bar: lines added and removed across all proposed changes
+function diffTotals(diffs: { original: string; modified: string }[]) {
+  return diffs.reduce(
+    (t, d) => ({
+      plus: t.plus + (d.modified ? d.modified.split('\n').length : 0),
+      minus: t.minus + (d.original ? d.original.split('\n').length : 0),
+    }),
+    { plus: 0, minus: 0 }
+  )
+}
+
 export function AISidebar() {
   const messages = useAppStore((s) => s.messages)
   const addMessage = useAppStore((s) => s.addMessage)
@@ -77,6 +94,7 @@ export function AISidebar() {
   const projectId = useAppStore((s) => s.projectId)
 
   const [input, setInput] = useState('')
+  const showList = useChatList((s) => s.showList)
   const [useFile, setUseFile] = useState(true)
   const [filePaths, setFilePaths] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -107,6 +125,12 @@ export function AISidebar() {
     listPaths(projectId).then(setFilePaths).catch(() => setFilePaths([]))
   }, [projectId, messages.length])
 
+  // Old chats are simplified, summarised, or deleted when a workspace opens
+  useEffect(() => {
+    if (!projectId) return
+    void ageChats(projectId).then(() => refreshChatList(projectId))
+  }, [projectId])
+
   const handleSend = async () => {
     const text = input.trim()
     const attachedPaths = useAttachments.getState().files
@@ -124,6 +148,8 @@ export function AISidebar() {
       role: 'user',
       content: text,
       fileName: useFile && activeFile ? activeFile.name : undefined,
+      attachments: attachedPaths,
+      tools: useToolToggles.getState().enabled,
     })
     const assistantId = addMessage({ role: 'assistant', content: '', blocks: [] })
     setGenerating(true)
@@ -142,7 +168,7 @@ export function AISidebar() {
       await runAgent({
         projectId,
         modelId: selectedModel,
-        mode,
+        mode: projectId ? mode : 'ask',
         history,
         userText: await attachMentions(text, projectId, attachedPaths),
         activeFileName: useFile && activeFile ? activeFile.name : null,
@@ -157,6 +183,7 @@ export function AISidebar() {
     } finally {
       abortRef.current = null
       setGenerating(false)
+      void persistCurrentChat()
     }
   }
 
@@ -167,31 +194,10 @@ export function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-[#0d1117]">
-      {/* Pending changes bar */}
-      {pendingDiffs.length > 0 && (
-        <div className="px-3 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between gap-2 shrink-0">
-          <span className="text-xs text-[#8b949e]">
-            {pendingDiffs.length} change{pendingDiffs.length > 1 ? 's' : ''} pending
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => pendingDiffs.forEach((d) => void applyPending(d.path))}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded"
-            >
-              <Check size={12} /> Keep All
-            </button>
-            <button
-              onClick={() => pendingDiffs.forEach((d) => declinePending(d.path))}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
-            >
-              <X size={12} /> Undo All
-            </button>
-          </div>
-        </div>
-      )}
-
+      <ChatHeader />
+      {showList && <SessionsList />}
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div className={`flex-1 overflow-y-auto p-3 space-y-4${showList ? ' hidden' : ''}`}>
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
             <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
@@ -215,6 +221,22 @@ export function AISidebar() {
                 key={msg.id}
                 className="rounded-md border border-[#30363d] bg-[#1c2128] px-3 py-2.5 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
               >
+                {(msg.attachments?.length || msg.tools?.length) ? (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {msg.attachments?.map((p) => (
+                      <span key={'a-' + p} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a2f38] text-xs text-[#d4d4d4]">
+                        <File size={11} className="text-[#8b949e]" />
+                        {p.split('/').pop()}
+                      </span>
+                    ))}
+                    {msg.tools?.map((t) => (
+                      <span key={'t-' + t} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a2f38] text-[11px] text-[#c9d1d9]">
+                        <Wrench size={11} className="text-[#8b949e]" />
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 {msg.fileName && (
                   <span className="mb-2 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-[#30363d]/60 text-xs text-[#c9d1d9]">
                     <File size={11} className="text-[#8b949e]" />
@@ -237,13 +259,13 @@ export function AISidebar() {
           }
           return (
             <div key={msg.id} className="space-y-2 text-sm text-[#e6edf3]">
-              {blocks.map((b, j) =>
-                b.type === 'text' ? (
-                  b.text.trim() ? (
-                    <div key={j}><MessageContent text={b.text.trim()} streaming={pending} /></div>
+              {groupBlocks(blocks).map((seg, j) =>
+                seg.type === 'text' ? (
+                  seg.text.trim() ? (
+                    <div key={j}><MessageContent text={seg.text.trim()} streaming={pending} /></div>
                   ) : null
                 ) : (
-                  <ToolBlock key={b.id} block={b} />
+                  <StepsGroup key={seg.id} blocks={seg.blocks} />
                 )
               )}
               {pending && <Loader2 size={12} className="animate-spin text-[#8b949e]" />}
@@ -270,12 +292,41 @@ export function AISidebar() {
       )}
 
       {/* Input */}
+      {/* Pending changes, just above the input, like Cursor */}
+      {pendingDiffs.length > 0 && (
+        <div className="px-3 pt-2 pb-1 flex items-center justify-between gap-2 text-xs shrink-0">
+          <span className="flex items-center gap-1.5 text-[#c9d1d9]">
+            <ChevronDown size={12} className="text-[#8b949e]" />
+            {pendingDiffs.length} file{pendingDiffs.length > 1 ? 's' : ''}
+            <span className="text-[#3fb950]">+{diffTotals(pendingDiffs).plus}</span>
+            <span className="text-[#f85149]">-{diffTotals(pendingDiffs).minus}</span>
+          </span>
+          <span className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => pendingDiffs.forEach((d) => declinePending(d.path))}
+              className="text-[#8b949e] hover:text-[#e6e6e6]"
+            >
+              Undo All
+            </button>
+            <button
+              type="button"
+              onClick={() => pendingDiffs.forEach((d) => void applyPending(d.path))}
+              className="px-2 py-0.5 rounded bg-[#2b3a55] text-[#e6e6e6] hover:bg-[#34486b]"
+            >
+              Keep All
+            </button>
+          </span>
+        </div>
+      )}
+
       <ChatInput
         value={input}
         onChange={setInput}
         onSend={handleSend}
         disabled={isGenerating}
-        mode={mode}
+        mode={projectId ? mode : 'ask'}
+        askOnly={!projectId}
         onModeChange={setMode}
         style={chatStyle}
         fileName={activeFile?.name ?? null}

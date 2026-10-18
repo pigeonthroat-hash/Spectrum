@@ -5,6 +5,7 @@ import { cn } from '../lib/utils'
 import { BrowserModelsSection } from './BrowserModelsSection'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 import { getForever, setForever } from '../lib/agent/autoApply'
+import { getRunForever, setRunForever } from '../lib/agent/runApproval'
 import { loadMemory, removeMemory, replaceMemory } from '../lib/agent/memory'
 import { Pencil, Check as CheckIcon, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -29,6 +30,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const [tab, setTab] = useState<Tab>('general')
   const [email, setEmail] = useState<string | null>(null)
   const [forever, setForeverState] = useState(false)
+  const [runForever, setRunForeverState] = useState(false)
   const [notes, setNotes] = useState<string[]>([])
 
   const chatStyle = useAppStore((s) => s.chatStyle)
@@ -41,6 +43,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   useEffect(() => {
     if (!open) return
     setForeverState(getForever())
+    setRunForeverState(getRunForever())
     setNotes(projectId ? loadMemory(projectId) : [])
     void supabase?.auth.getSession().then(({ data }) => setEmail(data.session?.user.email ?? null))
   }, [open, projectId])
@@ -53,6 +56,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const toggleForever = () => {
     setForever(!forever)
     setForeverState(!forever)
+  }
+
+  const toggleRunForever = () => {
+    setRunForever(!runForever)
+    setRunForeverState(!runForever)
   }
 
   const signOut = async () => {
@@ -157,6 +165,30 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         className={cn(
                           'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
                           forever && 'translate-x-4'
+                        )}
+                      />
+                    </button>
+                  </label>
+                  <p className={sectionText}>
+                    When on, code the AI wants to run runs without asking. You can also turn this on from the Run
+                    Automatically menu.
+                  </p>
+                  <label className="mt-2 flex items-center justify-between gap-4 text-sm text-[#e6edf3]">
+                    Run Automatically Forever
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={runForever}
+                      onClick={toggleRunForever}
+                      className={cn(
+                        'relative w-9 h-5 rounded-full transition-colors',
+                        runForever ? 'bg-[#238636]' : 'bg-[#30363d]'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                          runForever && 'translate-x-4'
                         )}
                       />
                     </button>

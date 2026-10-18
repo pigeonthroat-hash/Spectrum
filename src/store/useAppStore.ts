@@ -31,6 +31,8 @@ export interface ChatMessage {
   timestamp: number
   blocks?: Block[]
   fileName?: string // the open file when the message was sent (shown as a chip)
+  attachments?: string[] // files picked with the @ menu when the message was sent
+  tools?: string[] // tools that were turned on when the message was sent
 }
 
 export interface DiffHunk {

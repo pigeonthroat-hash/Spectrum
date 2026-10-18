@@ -6,7 +6,9 @@ import { loadMemory } from './memory'
 import { streamModel, type TurnMessage } from '../ai/stream'
 import { runPython } from '../python/pyRunner'
 import { errorText } from '../errors'
+import { awaitRunApproval, startRunReply } from './runApproval'
 import { runGroqAgent } from './groqAgent'
+import { useAppStore } from '../../store/useAppStore'
 
 const MAX_STEPS = 8
 const MAX_RESULT_CHARS = 4000
@@ -87,10 +89,19 @@ function replaceTrailingText(blocks: Block[], before: string): Block[] {
 
 async function runCall(
   call: Call,
-  projectId: string | null
+  _projectId: string | null,
+  id: string,
+  setBlocks: Setter
 ): Promise<{ output: string; ok: boolean }> {
   if (call.kind === 'python') {
-    const r = await runPython(projectId, call.body)
+    const decision = await awaitRunApproval(id, () =>
+      setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === id ? { ...b, status: 'awaiting' as const } : b)))
+    )
+    if (decision !== 'run') {
+      return { output: decision === 'decline' ? 'The user declined to run this code.' : 'The run was cancelled.', ok: false }
+    }
+    setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === id ? { ...b, status: 'running' as const } : b)))
+    const r = await runPython(useAppStore.getState().projectId, call.body, undefined, true)
     const output = [r.output.trim(), r.error ?? ''].filter(Boolean).join('\n')
     return { output: output || '(no output)', ok: !r.error }
   }
@@ -103,7 +114,7 @@ async function runCall(
   const name = typeof spec.name === 'string' ? spec.name : 'unknown'
   const args = (spec.args && typeof spec.args === 'object' ? spec.args : {}) as Record<string, unknown>
   try {
-    return { output: await executeTool(projectId, name, args), ok: true }
+    return { output: await executeTool(useAppStore.getState().projectId, name, args), ok: true }
   } catch (err) {
     return { output: `Error: ${errorText(err)}`, ok: false }
   }
@@ -122,6 +133,7 @@ export async function runAgent(opts: {
 }): Promise<void> {
   // Groq models use native tool calling (see groqAgent.ts). Everything else uses the text-tag loop below.
   if (opts.modelId.startsWith('groq/')) return runGroqAgent(opts)
+  startRunReply()
 
   const { projectId, setBlocks, signal } = opts
   if (signal?.aborted) return
@@ -132,7 +144,7 @@ export async function runAgent(opts: {
   const convo: TurnMessage[] = [
     {
       role: 'system',
-      content: buildSystemPrompt({ mode: opts.mode, memory, files, activeFileName: opts.activeFileName }),
+      content: buildSystemPrompt({ mode: opts.mode, memory, files, activeFileName: opts.activeFileName, noWorkspace: !projectId }),
     },
     ...opts.history,
     { role: 'user', content: opts.userText },
@@ -196,7 +208,7 @@ export async function runAgent(opts: {
     const block: ToolBlock = { type: 'tool', id, kind: call.kind, name, input: call.body, status: 'running' }
     setBlocks((bs) => [...replaceTrailingText(bs, call.before), block])
 
-    const result = await runCall(call, projectId)
+    const result = await runCall(call, projectId, id, setBlocks)
     setBlocks((bs) =>
       bs.map((b) =>
         b.type === 'tool' && b.id === id ? { ...b, output: result.output, status: result.ok ? 'done' : 'error' } : b

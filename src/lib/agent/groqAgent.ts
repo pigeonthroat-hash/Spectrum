@@ -87,13 +87,25 @@ function rereadNote(call: ToolCall): string {
     : ''
 }
 
+// Used when no workspace is open: questions only, no file work
+const NO_WORKSPACE_PROMPT = [
+  'You are Spectrum, a coding assistant inside a code editor.',
+  'No workspace is open. You can answer questions and explain code.',
+  'You cannot read, create, edit, or run files, and you cannot run code.',
+  'If the user asks for file work, tell them to open a workspace, or to ask you to create one.',
+  'Only create a workspace when the user explicitly asks for one, using the create_workspace tool.',
+  'Keep replies short.',
+].join('\n')
+
 function buildSystemPrompt(opts: {
   mode: AgentMode
   memory: string[]
   files: string[]
   activeFileName: string | null
   task: string | null
+  noWorkspace?: boolean
 }): string {
+  if (opts.noWorkspace) return NO_WORKSPACE_PROMPT
   const lines = [
     'You are Spectrum, a coding assistant inside a code editor.',
     'Mode: ' + MODE_HINTS[opts.mode],
@@ -158,7 +170,9 @@ async function callGroq(
   if (gap > 0) await sleep(gap)
   lastCallAt = Date.now()
 
-  const specs = toolSpecs(useToolToggles.getState().enabled)
+  const specs = useAppStore.getState().projectId
+    ? toolSpecs(useToolToggles.getState().enabled)
+    : toolSpecs().filter((t) => t.function.name === 'create_workspace')
   let res: Response
   try {
     res = await fetch(`${GROQ_PROXY_URL}/chat/completions`, {
@@ -271,7 +285,7 @@ function fitBudget(convo: ApiMessage[]): ApiMessage[] {
 
 async function runOneTool(
   call: ToolCall,
-  projectId: string | null,
+  _projectId: string | null,
   setBlocks: Setter
 ): Promise<{ block: ToolBlock; output: string; ok: boolean }> {
   // Tools turned off in the @ menu are refused, even if the model asks for them
@@ -307,7 +321,7 @@ async function runOneTool(
     setBlocks((bs) => bs.map((b) => (b.type === 'tool' && b.id === block.id ? { ...b, status: 'running' as const } : b)))
     try {
       // streamToPanel: the output panel shows the run, and typed input goes to the program
-      const r = await runPython(projectId, code, undefined, true)
+      const r = await runPython(useAppStore.getState().projectId, code, undefined, true)
       const output = [r.output.trim(), r.error ?? ''].filter(Boolean).join('\n') || '(no output)'
       return { block, output, ok: !r.error }
     } catch (err) {
@@ -325,7 +339,8 @@ async function runOneTool(
   }
   setBlocks((bs) => [...bs, block])
   try {
-    return { block, output: await executeTool(projectId, call.function.name, args), ok: true }
+    // Read the current workspace: the AI may have just created one during this reply
+    return { block, output: await executeTool(useAppStore.getState().projectId, call.function.name, args), ok: true }
   } catch (err) {
     return { block, output: 'Error: ' + errorText(err), ok: false }
   }
@@ -417,6 +432,7 @@ export async function runGroqAgent(opts: {
         files,
         activeFileName: opts.activeFileName,
         task: currentTask(opts.userText),
+        noWorkspace: !projectId,
       }),
     },
     ...history,
