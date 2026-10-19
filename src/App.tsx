@@ -8,7 +8,6 @@ import { Workspace } from './components/Workspace'
 import { DragGhost } from './components/DragGhost'
 import { ActivityBar } from './components/ActivityBar'
 import { StatusBar } from './components/StatusBar'
-import { BottomPanel } from './components/BottomPanel'
 import { Toasts } from './components/Toasts'
 import { QuickOpen } from './components/QuickOpen'
 import { useAppStore } from './store/useAppStore'
@@ -124,7 +123,6 @@ export default function App() {
           <div className="flex-1 flex min-h-0 min-w-0">
             <Workspace />
           </div>
-          <BottomPanel />
         </div>
       </div>
 

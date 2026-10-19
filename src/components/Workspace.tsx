@@ -9,6 +9,7 @@ import { useIsMobile } from '../lib/useIsMobile'
 import { FileExplorer } from './FileExplorer'
 import { AISidebar } from './AISidebar'
 import { CodeEditor } from './CodeEditor'
+import { BottomPanel } from './BottomPanel'
 
 const MIN_WIDTH = 180
 const STRIP_WIDTH = 28 // width of the collapsed strip
@@ -98,8 +99,11 @@ export function Workspace() {
           onReset={() => setWidth(leftPanel, DEFAULT_WIDTH[leftPanel])}
         />
       )}
-      <div className="flex-1 min-w-0">
-        <CodeEditor />
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 min-w-0">
+          <CodeEditor />
+        </div>
+        <BottomPanel />
       </div>
       {rightExpanded && (
         <Splitter

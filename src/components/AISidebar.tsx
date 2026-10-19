@@ -197,7 +197,7 @@ export function AISidebar() {
       <ChatHeader />
       {showList && <SessionsList />}
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-3 space-y-4${showList ? ' hidden' : ''}`}>
+      <div className={`flex-1 overflow-y-auto p-3 space-y-6${showList ? ' hidden' : ''}`}>
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
             <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
@@ -219,7 +219,7 @@ export function AISidebar() {
             return (
               <div
                 key={msg.id}
-                className="rounded-md border border-[#30363d] bg-[#1c2128] px-3 py-2.5 text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed"
+                className="rounded-md border border-[#30363d] bg-[#1c2128] px-3 py-3 text-sm text-[#e6edf3] whitespace-pre-wrap leading-7"
               >
                 {(msg.attachments?.length || msg.tools?.length) ? (
                   <div className="mb-2 flex flex-wrap gap-1.5">
@@ -258,7 +258,7 @@ export function AISidebar() {
             return pending ? <Loader2 key={msg.id} size={14} className="animate-spin text-[#8b949e]" /> : null
           }
           return (
-            <div key={msg.id} className="space-y-2 text-sm text-[#e6edf3]">
+            <div key={msg.id} className="space-y-3 text-sm text-[#e6edf3]">
               {groupBlocks(blocks).map((seg, j) =>
                 seg.type === 'text' ? (
                   seg.text.trim() ? (

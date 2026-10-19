@@ -176,14 +176,14 @@ export function MessageContent({ text, streaming = false }: { text: string; stre
 
   const parts = splitParts(text)
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {parts.map((p, i) => {
         if (p.kind !== 'text') return <CodeBlock key={i} lang={p.lang} code={p.code} />
         const body = p.text.trim()
         if (!body) return null
         const lead = p.text.length - p.text.trimStart().length
         return (
-          <div key={i} className="whitespace-pre-wrap leading-relaxed">
+          <div key={i} className="whitespace-pre-wrap leading-7">
             <InlineText text={body} base={p.start + lead} reveal={reveal} />
           </div>
         )

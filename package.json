@@ -14,11 +14,14 @@
 
   "scripts": {
 
+    
     "dev": "vite",
 
     "build": "tsc -b && vite build",
 
     "build:gh": "cross-env GITHUB_PAGES=true tsc -b && cross-env GITHUB_PAGES=true vite build",
+
+    "build:single": "cross-env SINGLE_FILE=true tsc -b && cross-env SINGLE_FILE=true vite build",
 
     "preview": "vite preview",
 
@@ -86,6 +89,8 @@
 
     "vite": "^8.3.0",
 
+    "vite-plugin-singlefile": "^2.3.4",
+
     "wait-on": "^8.0.2"
 
   },
@@ -111,3 +116,4 @@
   "license": "MIT"
 
 }
+
