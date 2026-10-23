@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { LiquidGlass } from '@ybouane/liquidglass'
+import { LiquidGlass, type LiquidGlassInstance } from '@ybouane/liquidglass'
 import type { ChatStyle } from '../store/useAppStore'
 import { cn } from '../lib/utils'
 
@@ -24,6 +24,18 @@ const GLASS_CONFIG = {
 
 const SNAP_DISTANCE = 40
 
+interface DragState {
+  px: number // pointer position where the drag started
+  py: number
+  x: number // footer position where the drag started
+  y: number
+  w: number
+  h: number
+  home: boolean // true if the footer was in its normal place, not already floating
+  lx: number // latest pointer position, applied once per frame
+  ly: number
+}
+
 interface ChatBodyProps {
   hidden: boolean
   style: ChatStyle
@@ -40,8 +52,12 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
   const backingRef = useRef<HTMLDivElement>(null)
   const liquid = style === 'liquid'
   const [footH, setFootH] = useState(96)
-  const drag = useRef<{ px: number; py: number; x: number; y: number; w: number; h: number; ox: number; oy: number } | null>(null)
+  const drag = useRef<DragState | null>(null)
+  const frame = useRef<number | undefined>(undefined)
   const snapTimer = useRef<number | undefined>(undefined)
+  const glassRef = useRef<LiquidGlassInstance | null>(null)
+  const outsideRef = useRef(false)
+  const frozenRef = useRef<HTMLElement | null>(null)
 
   // The footer's height, so the messages scroll above it
   useLayoutEffect(() => {
@@ -69,7 +85,10 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
       LiquidGlass.init({ root, glassElements: [foot] })
         .then((i) => {
           if (cancelled || mine !== generation) i.destroy()
-          else instance = i
+          else {
+            instance = i
+            glassRef.current = i
+          }
         })
         .catch((err: unknown) => console.warn('Liquid glass failed to start, showing plain footer', err))
     }
@@ -96,10 +115,10 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
       observer.disconnect()
       window.clearTimeout(timer)
       instance?.destroy()
+      glassRef.current = null
     }
   }, [liquid])
 
-  // Dragging: only the footer's drag handle starts a drag. Buttons and the text box keep working.
   const isInside = (x: number, y: number, w: number, h: number) => {
     const p = rootRef.current?.getBoundingClientRect()
     if (!p) return true
@@ -108,8 +127,7 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
     return cx >= p.left && cx <= p.right && cy >= p.top && cy <= p.bottom
   }
 
-  // Outside the panel the glass has nothing to bend, so its canvas would paint white. Hide the canvas
-  // there, and give the footer a dark surface with a faint glass rim instead.
+  // Outside the panel the glass has nothing to bend, so the footer shows a dark surface instead
   const setOutsideLook = (outside: boolean) => {
     const foot = footRef.current
     if (!foot) return
@@ -121,15 +139,40 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
     foot.style.border = outside ? '1px solid rgba(255,255,255,0.06)' : ''
   }
 
-  const showBacking = (on: boolean, x = 0, y = 0, w = 0, h = 0) => {
+  // The backing moves with the footer, by transform, so it costs no layout work
+  const showBacking = (on: boolean, dx = 0, dy = 0) => {
     const b = backingRef.current
-    if (liquid) setOutsideLook(on)
     if (!b) return
-    if (!on) {
-      b.style.display = 'none'
-      return
+    b.style.display = on ? 'block' : 'none'
+    b.style.transform = `translate3d(${dx}px,${dy}px,0)`
+  }
+
+  // Only acts when the box crosses the panel edge, not on every move
+  const updateOutside = (outside: boolean, dx = 0, dy = 0) => {
+    if (!liquid) return
+    const wasOutside = outsideRef.current
+    outsideRef.current = outside
+    setOutsideLook(outside)
+    showBacking(outside, dx, dy)
+    // Back over the messages: the glass was switched off while outside, so ask it to redraw
+    if (wasOutside && !outside) glassRef.current?.markChanged(footRef.current ?? undefined)
+  }
+
+  // While the footer is being dragged, the messages behind it don't change. So they are captured
+  // once, not on every frame. They are captured again when the drag ends.
+  const freezeBackdrop = () => {
+    const vp = rootRef.current?.querySelector<HTMLElement>('[data-dynamic]') ?? null
+    if (vp) {
+      vp.removeAttribute('data-dynamic')
+      frozenRef.current = vp
     }
-    Object.assign(b.style, { display: 'block', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' })
+  }
+  const thawBackdrop = () => {
+    const vp = frozenRef.current
+    if (vp) {
+      vp.setAttribute('data-dynamic', '')
+      frozenRef.current = null
+    }
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -138,24 +181,42 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
     const t = e.target as HTMLElement
     if (!t.closest('[data-drag-handle]') || t.closest('button, textarea, input, select, a')) return
     window.clearTimeout(snapTimer.current)
+
+    const home = !foot.style.position
     const r = foot.getBoundingClientRect()
-    drag.current = { px: e.clientX, py: e.clientY, x: r.left, y: r.top, w: r.width, h: r.height, ox: r.left, oy: r.top }
+    drag.current = {
+      px: e.clientX, py: e.clientY, x: r.left, y: r.top, w: r.width, h: r.height, home,
+      lx: e.clientX, ly: e.clientY,
+    }
     foot.setPointerCapture(e.pointerId)
     Object.assign(foot.style, {
-      position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px',
-      right: 'auto', bottom: 'auto', transition: 'none', zIndex: '80',
+      position: 'fixed', left: r.left + 'px', top: r.top + 'px',
+      width: r.width + 'px', height: r.height + 'px',
+      right: 'auto', bottom: 'auto', transition: 'none', transform: '', zIndex: '80',
     })
+    const b = backingRef.current
+    if (b) Object.assign(b.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', transform: '', display: 'none' })
+    freezeBackdrop()
+  }
+
+  // Applies the latest pointer position, at most once per screen frame
+  const applyMove = () => {
+    frame.current = undefined
+    const d = drag.current
+    const foot = footRef.current
+    if (!d || !foot) return
+    const dx = d.lx - d.px
+    const dy = d.ly - d.py
+    foot.style.transform = `translate3d(${dx}px,${dy}px,0)`
+    if (liquid) updateOutside(!isInside(d.x + dx, d.y + dy, d.w, d.h), dx, dy)
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current
-    const foot = footRef.current
-    if (!d || !foot) return
-    const x = d.x + e.clientX - d.px
-    const y = d.y + e.clientY - d.py
-    foot.style.left = x + 'px'
-    foot.style.top = y + 'px'
-    if (liquid) showBacking(!isInside(x, y, d.w, d.h), x, y, d.w, d.h)
+    if (!d) return
+    d.lx = e.clientX
+    d.ly = e.clientY
+    if (frame.current === undefined) frame.current = requestAnimationFrame(applyMove)
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -163,21 +224,39 @@ export function ChatBody({ hidden, style, list, footer }: ChatBodyProps) {
     const foot = footRef.current
     if (!d || !foot) return
     drag.current = null
-    const x = d.x + e.clientX - d.px
-    const y = d.y + e.clientY - d.py
-    if (Math.abs(x - d.ox) < SNAP_DISTANCE && Math.abs(y - d.oy) < SNAP_DISTANCE) {
-      // Glide back to where it started, then return to its place in the panel
-      foot.style.transition = 'left 200ms ease-out, top 200ms ease-out'
-      foot.style.left = d.ox + 'px'
-      foot.style.top = d.oy + 'px'
-      showBacking(false)
-      snapTimer.current = window.setTimeout(() => foot.removeAttribute('style'), 200)
-    } else if (liquid && !isInside(x, y, d.w, d.h)) {
-      // Dropped outside: keep the dark backing under the glass
-      showBacking(true, x, y, d.w, d.h)
-    } else {
-      showBacking(false)
+    if (frame.current !== undefined) {
+      cancelAnimationFrame(frame.current)
+      frame.current = undefined
     }
+    thawBackdrop()
+
+    const dx = e.clientX - d.px
+    const dy = e.clientY - d.py
+    const x = d.x + dx
+    const y = d.y + dy
+
+    if (Math.abs(dx) < SNAP_DISTANCE && Math.abs(dy) < SNAP_DISTANCE) {
+      // Glide back to where the drag started, then return to the normal layout if it started there
+      foot.style.transition = 'transform 200ms ease-out'
+      foot.style.transform = ''
+      updateOutside(false)
+      snapTimer.current = window.setTimeout(() => {
+        if (d.home) foot.removeAttribute('style')
+        else foot.style.transition = 'none'
+      }, 200)
+      return
+    }
+
+    // Commit the new position, and drop the transform
+    foot.style.left = x + 'px'
+    foot.style.top = y + 'px'
+    foot.style.transform = ''
+    const b = backingRef.current
+    if (b) {
+      b.style.left = x + 'px'
+      b.style.top = y + 'px'
+    }
+    updateOutside(liquid && !isInside(x, y, d.w, d.h))
   }
 
   return (

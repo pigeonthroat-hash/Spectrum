@@ -61,7 +61,7 @@ export default function App() {
   return (
     <div id="spectrum-root" className="h-[100dvh] w-screen flex flex-col bg-[#1a1814] text-[#ece6da] overflow-clip">
       {/* Title bar: navigation, command bar, and layout toggles, like Cursor */}
-      <header className="relative overflow-hidden h-9 flex items-center gap-2 px-2 border-b border-[#2d2921] bg-[#15130f] shrink-0 select-none">
+      <header className="relative h-9 flex items-center gap-2 px-2 border-b border-[#2d2921] bg-[#15130f] shrink-0 select-none">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <img src={logo} alt="" className="h-4 w-auto" />
           <span className="font-semibold text-sm tracking-tight text-[#ece6da]">Spectrum</span>
