@@ -1,6 +1,6 @@
 name: Issue
 description: Report a bug/issue with Spectrum
-labels: Bug, Needs review
+labels: ["bug", "needs review"]
 body:
   - type: textarea
     id: steps-to-reproduce
