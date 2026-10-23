@@ -1,0 +1,45 @@
+name: Idea
+description: Suggest an idea to improve Spectrum
+labels: ["Idea", "Needs review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest an idea for Spectrum!
+        Spectrum is an early-stage, free & local-first AI code editor (currently public beta v0.1).
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Describe your idea
+      description: How can Spectrum be improved for the community? Suggest only one idea at a time (open a new issue for a different idea).
+      placeholder: |
+        Example:
+          "Here is how it should work: …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      placeholder: |
+        Additional details, use cases, screenshots, or links.
+        (Screenshots should be in English if possible.)
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Your issue will be closed if you don’t read this carefully.
+      options:
+        - label: I have searched the [existing issues](https://github.com/pigeonthroat-hash/Spectrum/issues) (and [discussions](https://github.com/pigeonthroat-hash/Spectrum/discussions) if available) and this is a new ticket, **NOT** a duplicate or related to another open OR closed issue.
+          required: true
+        - label: My idea aligns with Spectrum’s free & local-first philosophy (WebLLM / Ollama / free cloud fallbacks) and is not something already listed in the [Roadmap](https://github.com/pigeonthroat-hash/Spectrum#roadmap).
+          required: true
+        - label: I am using the latest version available (live demo at [https://pigeonthroat-hash.github.io/Spectrum/](https://pigeonthroat-hash.github.io/Spectrum/) or the latest release).
+          required: true
+        - label: I wrote my request in English. Any screenshots I attached are also in English where possible (UI language can usually be changed in settings). I can add my native language below the English text if needed.
+          required: true
+        - label: I understand that this app is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY, so I may not get a positive reply to my request, if any at all.
+          required: true
