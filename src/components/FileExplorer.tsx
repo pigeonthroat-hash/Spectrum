@@ -94,9 +94,9 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
           else onOpen(node)
         }}
         className={cn(
-          'group relative flex items-center gap-1.5 py-[3px] pr-2 cursor-pointer text-[13px] hover:bg-[#21262d] select-none',
-          isActive ? 'bg-[#21262d] text-white' : 'text-[#c9d1d9]',
-          target?.edge === 'inside' && 'ring-1 ring-inset ring-[#e6edf3]/70 bg-[#21262d]',
+          'group relative flex items-center gap-1.5 py-[3px] pr-2 cursor-pointer text-[13px] hover:bg-[#2a261f] select-none',
+          isActive ? 'bg-[#2a261f] text-white' : 'text-[#d9d2c4]',
+          target?.edge === 'inside' && 'ring-1 ring-inset ring-[#ece6da]/70 bg-[#2a261f]',
           dragging && 'opacity-40'
         )}
         style={{ paddingLeft: `${depth * INDENT_PX + 8}px` }}
@@ -105,25 +105,25 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
         {Array.from({ length: depth }, (_, i) => (
           <span
             key={i}
-            className="pointer-events-none absolute top-0 bottom-0 w-px bg-[#30363d]"
+            className="pointer-events-none absolute top-0 bottom-0 w-px bg-[#2d2921]"
             style={{ left: `${i * INDENT_PX + GUIDE_OFFSET_PX}px` }}
           />
         ))}
 
         {target?.edge === 'top' && (
-          <span className="pointer-events-none absolute left-0 right-0 -top-px h-0.5 bg-[#e6edf3]" />
+          <span className="pointer-events-none absolute left-0 right-0 -top-px h-0.5 bg-[#ece6da]" />
         )}
         {target?.edge === 'bottom' && (
-          <span className="pointer-events-none absolute left-0 right-0 -bottom-px h-0.5 bg-[#e6edf3]" />
+          <span className="pointer-events-none absolute left-0 right-0 -bottom-px h-0.5 bg-[#ece6da]" />
         )}
 
         {isFolder ? (
-          isOpen ? <ChevronDown size={14} className="shrink-0 text-[#8b949e]" /> : <ChevronRight size={14} className="shrink-0 text-[#8b949e]" />
+          isOpen ? <ChevronDown size={14} className="shrink-0 text-[#938a7c]" /> : <ChevronRight size={14} className="shrink-0 text-[#938a7c]" />
         ) : (
           <span className="w-[14px] shrink-0" />
         )}
         {isFolder ? (
-          isOpen ? <FolderOpen size={14} className="shrink-0 text-[#8b949e]" /> : <Folder size={14} className="shrink-0 text-[#8b949e]" />
+          isOpen ? <FolderOpen size={14} className="shrink-0 text-[#938a7c]" /> : <Folder size={14} className="shrink-0 text-[#938a7c]" />
         ) : (
           <FileIcon name={node.name} />
         )}
@@ -134,7 +134,7 @@ function TreeItem({ node, depth, collapsed, onToggle, onOpen, onDelete, onStartD
             onDelete(node)
           }}
           title="Delete"
-          className="opacity-0 group-hover:opacity-100 p-0.5 text-[#8b949e] hover:text-[#f85149]"
+          className="opacity-0 group-hover:opacity-100 p-0.5 text-[#938a7c] hover:text-[#f85149]"
         >
           <Trash2 size={12} />
         </button>
@@ -358,7 +358,7 @@ export function FileExplorer() {
 
   return (
     <div
-      className="h-full flex flex-col bg-[#0d1117]"
+      className="h-full flex flex-col bg-[#1a1814]"
       onContextMenu={(e) => {
         // Right-click on empty space (not on a file or folder row) runs the whole project
         if ((e.target as HTMLElement).closest('[data-node-path]') || !projectId) return
@@ -376,19 +376,19 @@ export function FileExplorer() {
       }}
     >
       {projectId && (
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-[#30363d]">
-          <span className="flex items-center gap-0.5 min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-[#c9d1d9]">
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-[#2d2921]">
+          <span className="flex items-center gap-0.5 min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-[#d9d2c4]">
             <ChevronDown size={12} className="shrink-0" />
             <span className="truncate">{projectName}</span>
           </span>
           <div className="flex items-center gap-0.5 shrink-0">
-            <button title="New file" onClick={() => create('file')} className="p-1 rounded hover:bg-[#21262d]">
+            <button title="New file" onClick={() => create('file')} className="p-1 rounded hover:bg-[#2a261f]">
               <FilePlus size={13} />
             </button>
-            <button title="New folder" onClick={() => create('folder')} className="p-1 rounded hover:bg-[#21262d]">
+            <button title="New folder" onClick={() => create('folder')} className="p-1 rounded hover:bg-[#2a261f]">
               <FolderPlus size={13} />
             </button>
-            <button title="Upload files" onClick={() => uploadInput.current?.click()} className="p-1 rounded hover:bg-[#21262d]">
+            <button title="Upload files" onClick={() => uploadInput.current?.click()} className="p-1 rounded hover:bg-[#2a261f]">
               <Upload size={13} />
             </button>
             <input
@@ -402,13 +402,13 @@ export function FileExplorer() {
                 if (projectId && list.length > 0) void uploadFiles(list, projectId)
               }}
             />
-            <button title="Refresh" onClick={refresh} className="p-1 rounded hover:bg-[#21262d]">
+            <button title="Refresh" onClick={refresh} className="p-1 rounded hover:bg-[#2a261f]">
               <RefreshCw size={13} />
             </button>
             <button
               title="Close project"
               onClick={closeProject}
-              className="px-1.5 py-0.5 rounded hover:bg-[#21262d] text-[11px] text-[#8b949e]"
+              className="px-1.5 py-0.5 rounded hover:bg-[#2a261f] text-[11px] text-[#938a7c]"
             >
               Close
             </button>
@@ -423,10 +423,10 @@ export function FileExplorer() {
       ) : (
         <div
           data-tree-root
-          className={cn('flex-1 overflow-y-auto py-1', rootHot && 'ring-1 ring-inset ring-[#e6edf3]/40')}
+          className={cn('flex-1 overflow-y-auto py-1', rootHot && 'ring-1 ring-inset ring-[#ece6da]/40')}
         >
           {displayTree.length === 0 && (
-            <p className="px-3 py-2 text-xs text-[#8b949e]">Empty project. Use the buttons above to add a file.</p>
+            <p className="px-3 py-2 text-xs text-[#938a7c]">Empty project. Use the buttons above to add a file.</p>
           )}
           {displayTree.map((node) => (
             <TreeItem

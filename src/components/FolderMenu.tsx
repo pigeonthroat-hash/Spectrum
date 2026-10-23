@@ -21,13 +21,13 @@ export function FolderMenu() {
   if (!menu) return null
   return (
     <div
-      className="fixed z-50 min-w-[180px] rounded-md border border-[#30363d] bg-[#161b22] shadow-xl py-1 text-xs"
+      className="fixed z-50 min-w-[180px] rounded-md border border-[#2d2921] bg-[#15130f] shadow-xl py-1 text-xs"
       style={{ left: menu.x, top: menu.y }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <button
         type="button"
-        className="w-full text-left px-3 py-1.5 text-[#e6edf3] hover:bg-[#21262d]"
+        className="w-full text-left px-3 py-1.5 text-[#ece6da] hover:bg-[#2a261f]"
         onClick={() => {
           const folder = menu.path
           close()

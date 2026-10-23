@@ -33,6 +33,8 @@ export interface ChatMessage {
   fileName?: string // the open file when the message was sent (shown as a chip)
   attachments?: string[] // files picked with the @ menu when the message was sent
   tools?: string[] // tools that were turned on when the message was sent
+  todos?: { text: string; done: boolean }[] // the agent's to-do list for this reply
+  review?: { path: string; added: number; removed: number }[] // files this reply changed
 }
 
 export interface DiffHunk {

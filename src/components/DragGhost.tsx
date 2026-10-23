@@ -11,11 +11,11 @@ export function DragGhost() {
   const label = item.kind === 'file' ? item.name : item.label
   return (
     <div
-      className="pointer-events-none fixed z-[100] flex items-center gap-1.5 px-2 py-1 rounded-md border border-[#30363d] bg-[#21262d] text-xs text-[#e6edf3] shadow-lg"
+      className="pointer-events-none fixed z-[100] flex items-center gap-1.5 px-2 py-1 rounded-md border border-[#2d2921] bg-[#2a261f] text-xs text-[#ece6da] shadow-lg"
       style={{ left: x + 12, top: y + 10 }}
     >
       {item.kind === 'file' &&
-        (item.isFolder ? <Folder size={12} className="text-[#58a6ff]" /> : <File size={12} className="text-[#8b949e]" />)}
+        (item.isFolder ? <Folder size={12} className="text-[#f0a93b]" /> : <File size={12} className="text-[#938a7c]" />)}
       <span>{label}</span>
     </div>
   )

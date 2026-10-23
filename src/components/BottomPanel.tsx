@@ -69,7 +69,7 @@ const PLACEHOLDERS: Partial<Record<BottomTab, string>> = {
 // Problems: click one to jump to its line
 function ProblemsList({ problems }: { problems: Problem[] }) {
   if (problems.length === 0) {
-    return <p className="px-3 py-2 text-xs text-[#8b949e]">No problems have been detected in the workspace.</p>
+    return <p className="px-3 py-2 text-xs text-[#938a7c]">No problems have been detected in the workspace.</p>
   }
   return (
     <ul className="py-1">
@@ -82,17 +82,17 @@ function ProblemsList({ problems }: { problems: Problem[] }) {
                 notify('Could not open ' + p.path + ': ' + errorText(err))
               )
             }
-            className="w-full flex items-start gap-2 px-3 py-1 text-left text-xs hover:bg-[#21262d]"
+            className="w-full flex items-start gap-2 px-3 py-1 text-left text-xs hover:bg-[#2a261f]"
           >
             {p.severity === 8 ? (
               <XCircle size={12} className="mt-0.5 shrink-0 text-[#f85149]" />
             ) : p.severity === 4 ? (
               <AlertTriangle size={12} className="mt-0.5 shrink-0 text-[#d29922]" />
             ) : (
-              <Info size={12} className="mt-0.5 shrink-0 text-[#8b949e]" />
+              <Info size={12} className="mt-0.5 shrink-0 text-[#938a7c]" />
             )}
-            <span className="flex-1 text-[#e6e6e6]">{p.message}</span>
-            <span className="shrink-0 text-[#8b949e]">
+            <span className="flex-1 text-[#f0a93b]">{p.message}</span>
+            <span className="shrink-0 text-[#938a7c]">
               {p.path.split('/').pop()}:{p.line}
             </span>
           </button>
@@ -117,18 +117,21 @@ export function BottomPanel() {
     if (outputOpen) show('output')
   }, [outputOpen, show])
 
-  if (!open) return null
 
   const closePanel = () => {
     close()
     outputStore.getState().close()
   }
 
-  const bar = 'p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]'
+  const bar = 'p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]'
 
   return (
-    <section className="h-56 shrink-0 flex flex-col min-h-0 border-t border-[#30363d] bg-[#0d1117]">
-      <div className="flex items-center justify-between h-8 px-2 border-b border-[#30363d] bg-[#0d1117] select-none">
+    <div
+      className="shrink-0 overflow-clip"
+      style={{ height: open ? 224 : 0, transition: 'height 180ms cubic-bezier(0.2, 0.7, 0.2, 1)' }}
+    >
+    <section className="h-56 shrink-0 flex flex-col min-h-0 border-t border-[#2d2921] bg-[#1a1814]">
+      <div className="flex items-center justify-between h-8 px-2 border-b border-[#2d2921] bg-[#1a1814] select-none">
         <div className="flex items-center gap-1 min-w-0">
           {TABS.map((t) => (
             <button
@@ -138,13 +141,13 @@ export function BottomPanel() {
               className={cn(
                 'px-2 h-8 text-[11px] uppercase tracking-wide border-b-2 whitespace-nowrap',
                 tab === t.id
-                  ? 'text-[#e6e6e6] border-[#e6e6e6]'
-                  : 'text-[#8b949e] border-transparent hover:text-[#e6e6e6]'
+                  ? 'text-[#f0a93b] border-[#f0a93b]'
+                  : 'text-[#938a7c] border-transparent hover:text-[#f0a93b]'
               )}
             >
               {t.label}
               {t.id === 'problems' && problems.length > 0 && (
-                <span className="ml-1 text-[10px] text-[#8b949e]">{problems.length}</span>
+                <span className="ml-1 text-[10px] text-[#938a7c]">{problems.length}</span>
               )}
             </button>
           ))}
@@ -176,9 +179,10 @@ export function BottomPanel() {
         )}
         {tab === 'output' && <OutputBody />}
         {PLACEHOLDERS[tab] && (
-          <p className="absolute inset-0 px-3 py-2 text-xs text-[#8b949e]">{PLACEHOLDERS[tab]}</p>
+          <p className="absolute inset-0 px-3 py-2 text-xs text-[#938a7c]">{PLACEHOLDERS[tab]}</p>
         )}
       </div>
     </section>
+    </div>
   )
 }

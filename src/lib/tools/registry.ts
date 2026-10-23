@@ -183,6 +183,21 @@ const RAW_TOOLS: ToolDef[] = [
       return [r.output.trim(), r.error ?? ''].filter(Boolean).join('\n') || '(no output)'
     },
   },
+  // To-dos
+  {
+    name: 'set_todos', category: 'system', risky: false, available: true,
+    description: 'Keep a short to-do list for a task with several steps. Each call replaces the whole list. Mark items done as you finish them.',
+    params: {
+      todos: {
+        type: 'array',
+        description: 'The whole list, in order',
+        items: { type: 'object', properties: { text: { type: 'string' }, done: { type: 'boolean' } }, required: ['text'] },
+      },
+    },
+    required: ['todos'],
+    run: (p, a) => executeTool(p, 'set_todos', a),
+  },
+
   // Workspace
   {
     name: 'create_workspace', category: 'workspace', risky: false, available: true,

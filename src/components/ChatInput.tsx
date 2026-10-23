@@ -3,11 +3,11 @@ import { useToolToggles } from '../lib/tools/toggles'
 import { TOOLS } from '../lib/tools/registry'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { AtSign, File, Image as ImageIcon, Plus, Send, X } from 'lucide-react'
-import { LiquidGlassBox } from './LiquidGlassBox'
 import { ModelPicker } from './ModelPicker'
 import { ModePicker } from './ModePicker'
+import { MicButton } from './MicButton'
 import { MentionMenu, type MenuView } from './MentionMenu'
-import type { AgentMode, ChatStyle } from '../store/useAppStore'
+import type { AgentMode } from '../store/useAppStore'
 
 interface ChatInputProps {
   value: string
@@ -17,7 +17,6 @@ interface ChatInputProps {
   mode: AgentMode
   onModeChange: (mode: AgentMode) => void
   askOnly?: boolean
-  style: ChatStyle
   fileName: string | null
   useFile: boolean
   onToggleFile: () => void
@@ -34,7 +33,6 @@ export function ChatInput({
   mode,
   onModeChange,
   askOnly,
-  style,
   fileName,
   useFile,
   onToggleFile,
@@ -43,7 +41,6 @@ export function ChatInput({
   filePaths,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const isLiquid = style === 'liquid'
   const hasFile = fileName !== null
   const [highlight, setHighlight] = useState(0)
   const [menuView, setMenuView] = useState<MenuView>('root')
@@ -123,58 +120,53 @@ export function ChatInput({
 
   const content = (
     <div className="flex flex-col gap-1">
-      {/* Top row: + button, plus the current file chip when there is one */}
-      <div className="flex flex-wrap items-center gap-1.5 min-h-[22px]">
-        <button
-          type="button"
-          disabled
-          title="Attachments (coming soon)"
-          className="p-0.5 rounded text-[#8b949e] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+      {/* Top row: the + button, plus chips. The empty space here is the drag handle for the box. */}
+      <div data-drag-handle className="flex flex-wrap items-center gap-1.5 min-h-[22px] cursor-grab">
+        <button type="button" disabled title="Attachments (coming soon)" className="p-0.5 rounded text-[#938a7c] disabled:opacity-50 disabled:cursor-not-allowed">
           <Plus size={14} />
         </button>
-        {hasFile && useFile && (
-          <span className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-md bg-[#21262d] border border-[#30363d] text-xs text-[#e6edf3]">
-            <File size={12} className="text-[#8b949e] shrink-0" />
-            <span className="truncate max-w-[140px]">{fileName}</span>
-            <span className="text-[10px] text-[#8b949e] shrink-0">Current File</span>
-            <button type="button" onClick={onToggleFile} className="text-[#8b949e] hover:text-white shrink-0">
-              <X size={11} />
+          {hasFile && useFile && (
+            <span className="flex items-center gap-1.5 min-w-0 px-2 py-0.5 rounded-md bg-[#2a261f] border border-[#2d2921] text-xs text-[#ece6da]">
+              <File size={12} className="text-[#938a7c] shrink-0" />
+              <span className="truncate max-w-[140px]">{fileName}</span>
+              <span className="text-[10px] text-[#938a7c] shrink-0">Current File</span>
+              <button type="button" onClick={onToggleFile} className="text-[#938a7c] hover:text-white shrink-0">
+                <X size={11} />
+              </button>
+            </span>
+          )}
+          {hasFile && !useFile && (
+            <button
+              type="button"
+              onClick={onToggleFile}
+              className="px-1.5 py-0.5 rounded border border-dashed border-[#2d2921] text-xs text-[#938a7c] hover:text-white"
+            >
+              + Current File
             </button>
-          </span>
-        )}
-        {hasFile && !useFile && (
-          <button
-            type="button"
-            onClick={onToggleFile}
-            className="px-1.5 py-0.5 rounded border border-dashed border-[#30363d] text-xs text-[#8b949e] hover:text-white"
-          >
-            + Current File
-          </button>
-        )}
-        {attached.map((path) => (
-          <span
-            key={'file-' + path}
-            className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-xs text-[#e6edf3]"
-          >
-            <File size={11} className="text-[#8b949e] shrink-0" />
-            <span className="truncate max-w-[160px]">{path.split('/').pop()}</span>
-            <button type="button" onClick={() => detachFile(path)} title="Remove" className="text-[#8b949e] hover:text-white">
-              <X size={10} />
-            </button>
-          </span>
-        ))}
-        {enabledTools.map((name) => (
-          <span
-            key={'tool-' + name}
-            className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-[11px] text-[#c9d1d9]"
-          >
-            {name}
-            <button type="button" onClick={() => toggleTool(name)} title="Turn off" className="text-[#8b949e] hover:text-white">
-              <X size={10} />
-            </button>
-          </span>
-        ))}
+          )}
+          {attached.map((path) => (
+            <span
+              key={'file-' + path}
+              className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2a261f] border border-[#2d2921] text-xs text-[#ece6da]"
+            >
+              <File size={11} className="text-[#938a7c] shrink-0" />
+              <span className="truncate max-w-[160px]">{path.split('/').pop()}</span>
+              <button type="button" onClick={() => detachFile(path)} title="Remove" className="text-[#938a7c] hover:text-white">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+          {enabledTools.map((name) => (
+            <span
+              key={'tool-' + name}
+              className="anim-scale-in flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#2a261f] border border-[#2d2921] text-[11px] text-[#d9d2c4]"
+            >
+              {name}
+              <button type="button" onClick={() => toggleTool(name)} title="Turn off" className="text-[#938a7c] hover:text-white">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
       </div>
 
       {/* Text input */}
@@ -185,7 +177,7 @@ export function ChatInput({
         onKeyDown={onKeyDown}
         placeholder="Plan, search, build anything"
         rows={1}
-        className="w-full min-h-[20px] bg-transparent text-sm leading-5 text-[#e6edf3] placeholder:text-[#8b949e] resize-none outline-none"
+        className="w-full min-h-[20px] bg-transparent text-sm leading-5 text-[#ece6da] placeholder:text-[#938a7c] resize-none outline-none"
       />
 
       {/* Bottom row, like Cursor: mode and model on the left, @, image, and send on the right */}
@@ -195,10 +187,20 @@ export function ChatInput({
           <ModelPicker value={selectedModel} onChange={onModelChange} placement="up" />
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button type="button" onClick={mentionClick} title="Mention" className="p-1.5 rounded-md text-[#8b949e] hover:text-white hover:bg-[#2a2f38]">
+          <button
+            type="button"
+            onClick={mentionClick}
+            title="Add context (@)"
+            className="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
+          >
+            <Plus size={12} />
+            Add Context
+          </button>
+          <button type="button" onClick={mentionClick} title="Mention" className="p-1.5 rounded-md text-[#938a7c] hover:text-white hover:bg-[#2a261f]">
             <AtSign size={14} />
           </button>
-          <button type="button" disabled title="Images (coming soon)" className="p-1.5 rounded-md text-[#8b949e] disabled:opacity-40">
+          <MicButton value={value} onChange={onChange} />
+          <button type="button" disabled title="Images (coming soon)" className="p-1.5 rounded-md text-[#938a7c] disabled:opacity-40">
             <ImageIcon size={14} />
           </button>
           <button
@@ -206,7 +208,7 @@ export function ChatInput({
             onClick={onSend}
             disabled={(!value.trim() && attached.length === 0) || disabled}
             title="Send"
-            className="ml-0.5 h-7 w-7 flex items-center justify-center rounded-full bg-[#e6e6e6] text-[#1c1f25] hover:bg-white disabled:bg-[#3a3f48] disabled:text-[#7d818c] transition-colors"
+            className="ml-0.5 h-7 w-7 flex items-center justify-center rounded-full bg-[#f0a93b] text-[#1f1b15] hover:bg-white disabled:bg-[#3a342a] disabled:text-[#938a7c] transition-colors"
           >
             <Send size={13} />
           </button>
@@ -216,7 +218,7 @@ export function ChatInput({
   )
 
   return (
-    <div className="relative p-2 border-t border-[#30363d] shrink-0">
+    <div className="relative">
       {menuOpen && (
         <MentionMenu
           view={menuView}
@@ -231,11 +233,7 @@ export function ChatInput({
           onToggleTool={toggleTool}
         />
       )}
-      {isLiquid ? (
-        <LiquidGlassBox>{content}</LiquidGlassBox>
-      ) : (
-        <div className="rounded-xl border border-[#2c2f36] bg-[#1c1f25] px-3 py-2.5 shadow-sm">{content}</div>
-      )}
+      {content}
     </div>
   )
 }

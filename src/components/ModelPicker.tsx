@@ -59,31 +59,31 @@ export function ModelPicker({ value, onChange, placement = 'down' }: ModelPicker
     <div ref={rootRef} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 bg-[#161b22] border border-[#30363d] text-xs text-[#e6edf3] rounded px-2 py-1 max-w-[160px] outline-none hover:border-[#58a6ff] focus:border-[#58a6ff]"
+        className="flex items-center gap-1 bg-[#15130f] border border-[#2d2921] text-xs text-[#ece6da] rounded px-2 py-1 max-w-[160px] outline-none hover:border-[#f0a93b] focus:border-[#f0a93b]"
       >
         <span className="truncate">{current?.label ?? value}</span>
-        <ChevronDown size={12} className="shrink-0 text-[#8b949e]" />
+        <ChevronDown size={12} className="shrink-0 text-[#938a7c]" />
       </button>
 
       {open && (
         <div className={cn(
-          'absolute right-0 w-72 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl overflow-hidden',
+          'absolute right-0 w-72 z-50 bg-[#15130f] border border-[#2d2921] rounded-lg shadow-xl overflow-hidden',
           placement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
         )}>
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-[#30363d]">
-            <Search size={13} className="text-[#8b949e] shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2d2921]">
+            <Search size={13} className="text-[#938a7c] shrink-0" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search models"
-              className="w-full bg-transparent text-xs text-[#e6edf3] placeholder:text-[#8b949e] outline-none"
+              className="w-full bg-transparent text-xs text-[#ece6da] placeholder:text-[#938a7c] outline-none"
             />
           </div>
 
           <div className="max-h-80 overflow-y-auto py-1">
             {!query.trim() && (
-              <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-[#8b949e]">
+              <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-[#938a7c]">
                 Popular
               </div>
             )}
@@ -93,28 +93,28 @@ export function ModelPicker({ value, onChange, placement = 'down' }: ModelPicker
                 key={m.id}
                 onClick={() => pick(m.id)}
                 className={cn(
-                  'w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left text-xs hover:bg-[#21262d]',
-                  m.id === value ? 'text-white' : 'text-[#e6edf3]'
+                  'w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left text-xs hover:bg-[#2a261f]',
+                  m.id === value ? 'text-white' : 'text-[#ece6da]'
                 )}
               >
                 <span className="min-w-0">
                   <span className="block truncate">{m.label}</span>
-                  <span className="block truncate text-[10px] text-[#8b949e]">{m.id}</span>
+                  <span className="block truncate text-[10px] text-[#938a7c]">{m.id}</span>
                 </span>
                 <span className="flex items-center gap-1.5 shrink-0">
                   {m.isNew && (
                     <span className="text-[9px] px-1 rounded bg-[#1f6feb] text-white">NEW</span>
                   )}
-                  <span className="text-[9px] text-[#8b949e]">
+                  <span className="text-[9px] text-[#938a7c]">
                     {m.provider === 'browser' ? 'browser' : m.provider === 'ollama' ? 'local' : 'free'}
                   </span>
-                  {m.id === value && <Check size={12} className="text-[#3fb950]" />}
+                  {m.id === value && <Check size={12} className="text-[#f0a93b]" />}
                 </span>
               </button>
             ))}
 
             {status === 'loading' && (
-              <div className="flex items-center gap-2 px-3 py-2 text-xs text-[#8b949e]">
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-[#938a7c]">
                 <Loader2 size={12} className="animate-spin" /> Loading free models...
               </div>
             )}
@@ -124,11 +124,11 @@ export function ModelPicker({ value, onChange, placement = 'down' }: ModelPicker
               </div>
             )}
             {status === 'done' && visible.length === 0 && (
-              <div className="px-3 py-2 text-xs text-[#8b949e]">No models match "{query}"</div>
+              <div className="px-3 py-2 text-xs text-[#938a7c]">No models match "{query}"</div>
             )}
           </div>
 
-          <div className="px-3 py-1.5 border-t border-[#30363d] text-[10px] text-[#8b949e]">
+          <div className="px-3 py-1.5 border-t border-[#2d2921] text-[10px] text-[#938a7c]">
             {status === 'done' ? `${all.length} models · type to search` : 'Type to search all models'}
           </div>
         </div>

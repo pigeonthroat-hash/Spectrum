@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAppStore, type PanelId } from '../store/useAppStore'
 import { useDragStore } from '../lib/dragStore'
@@ -30,6 +30,21 @@ function setWidth(id: PanelId, width: number) {
 }
 
 // The main area: left panel, editor, right panel, with draggable dividers
+// A panel that has just become visible starts at zero width, then grows to its full width.
+// (It is on the next frame, so the browser draws the start position first.)
+function useEnterAnim(visible: boolean): boolean {
+  const [ready, setReady] = useState(visible)
+  useEffect(() => {
+    if (!visible) {
+      setReady(false)
+      return
+    }
+    const id = requestAnimationFrame(() => setReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [visible])
+  return ready
+}
+
 export function Workspace() {
   const mobile = useIsMobile()
   const leftPanel = useAppStore((s) => s.leftPanel)
@@ -42,6 +57,9 @@ export function Workspace() {
   const sidebarWidth = useAppStore((s) => s.sidebarWidth)
   const maximized = useAppStore((s) => s.maximized)
   const closing = useClosing((s) => s.closing)
+
+  const explorerReady = useEnterAnim(showExplorer)
+  const chatReady = useEnterAnim(showAI)
 
   const isVisible = (id: PanelId) => (id === 'explorer' ? showExplorer : showAI)
   const isCollapsed = (id: PanelId) => (id === 'explorer' ? explorerCollapsed : chatCollapsed)
@@ -67,11 +85,14 @@ export function Workspace() {
     const width = id === 'explorer' ? explorerWidth : sidebarWidth
     const anchor = side === 'left' ? 'left-0' : 'right-0'
     const leaving = closing === id
+    const ready = id === 'explorer' ? explorerReady : chatReady
+    const shown = ready && !leaving
+    const offscreen = side === 'left' ? '-100%' : '100%'
     return (
       <div
-        className="relative shrink-0 h-full overflow-hidden min-w-0"
+        className="relative shrink-0 h-full overflow-clip min-w-0"
         style={{
-          width: leaving ? 0 : collapsed ? STRIP_WIDTH : width,
+          width: !shown ? 0 : collapsed ? STRIP_WIDTH : width,
           transition: `width ${CLOSE_MS}ms cubic-bezier(0.2, 0.7, 0.2, 1)`,
         }}
       >
@@ -79,7 +100,7 @@ export function Workspace() {
           className={`absolute top-0 bottom-0 ${anchor}`}
           style={{
             width,
-            transform: leaving ? `translateX(${side === 'left' ? '-100%' : '100%'})` : 'none',
+            transform: shown ? 'none' : `translateX(${offscreen})`,
             transition: `transform ${CLOSE_MS}ms cubic-bezier(0.2, 0.7, 0.2, 1)`,
           }}
         >
@@ -145,7 +166,7 @@ function Splitter({ onResize, onReset }: { onResize: (dx: number) => void; onRes
       onPointerCancel={stop}
       onDoubleClick={onReset}
       title="Drag to resize. Double-click to reset."
-      className="w-1 shrink-0 cursor-col-resize bg-[#30363d] hover:bg-[#58a6ff] transition-colors"
+      className="w-1 shrink-0 cursor-col-resize bg-[#2d2921] hover:bg-[#f0a93b] transition-colors"
     />
   )
 }
@@ -159,7 +180,7 @@ function CollapsedStrip({ id, side, open }: { id: PanelId; side: 'left' | 'right
       onClick={() => setCollapsed(id, false)}
       title={`Expand ${TITLE[id]}`}
       tabIndex={open ? 0 : -1}
-      className={`absolute top-0 bottom-0 ${side === 'left' ? 'left-0' : 'right-0'} w-7 flex flex-col items-center gap-3 py-3 bg-[#161b22] border-x border-[#30363d] text-[#8b949e] hover:text-white hover:bg-[#21262d]`}
+      className={`absolute top-0 bottom-0 ${side === 'left' ? 'left-0' : 'right-0'} w-7 flex flex-col items-center gap-3 py-3 bg-[#15130f] border-x border-[#2d2921] text-[#938a7c] hover:text-white hover:bg-[#2a261f]`}
       style={{ opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none', transition: 'opacity 180ms ease-out' }}
     >
       <Icon size={14} />
@@ -179,7 +200,7 @@ function DropZone({ side }: { side: 'left' | 'right' }) {
   return (
     <div
       className={`pointer-events-none absolute top-0 bottom-0 ${side === 'left' ? 'left-0' : 'right-0'} w-[30%] z-40 flex items-center justify-center border-2 border-dashed transition-colors text-xs ${
-        active ? 'border-[#58a6ff] bg-[#58a6ff]/15 text-[#58a6ff]' : 'border-[#30363d] text-transparent'
+        active ? 'border-[#f0a93b] bg-[#f0a93b]/15 text-[#f0a93b]' : 'border-[#2d2921] text-transparent'
       }`}
     >
       {active ? `Dock ${item.label} on the ${side}` : ''}

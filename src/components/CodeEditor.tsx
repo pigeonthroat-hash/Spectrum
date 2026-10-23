@@ -5,6 +5,9 @@ import { ChevronRight } from 'lucide-react'
 import { isBinaryName } from '../lib/files/kinds'
 import { FileViewer } from './FileViewer'
 import Editor from '@monaco-editor/react'
+import '../lib/monacoLoader'
+import { ReviewBar } from './ReviewBar'
+import { isCreatePending } from '../lib/agent/decisions'
 import { InlineDiff } from './InlineDiff'
 import { useAppStore } from '../store/useAppStore'
 import { X, Check, Undo2, Redo2, Play, Eye } from 'lucide-react'
@@ -38,11 +41,11 @@ export function CodeEditor() {
   const canRedo = !!activeTab && redoItem?.path === activeTab.path
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#0d1117]">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#201d18]">
       {/* Tabs */}
-      <div className="flex items-center bg-[#161b22] border-b border-[#30363d] overflow-x-auto shrink-0">
+      <div className="flex items-center bg-[#15130f] border-b border-[#2d2921] overflow-x-auto shrink-0">
         {openTabs.length === 0 && (
-          <div className="px-4 py-2 text-sm text-[#8b949e]">
+          <div className="px-4 py-2 text-sm text-[#938a7c]">
             No file open
           </div>
         )}
@@ -50,10 +53,10 @@ export function CodeEditor() {
           <div
             key={tab.path}
             className={cn(
-              'group flex items-center gap-2 px-3 py-2 text-sm border-r border-[#30363d] cursor-pointer min-w-0',
+              'group flex items-center gap-2 px-3 py-2 text-sm border-r border-[#2d2921] cursor-pointer min-w-0',
               activeTabPath === tab.path
-                ? 'bg-[#0d1117] text-white'
-                : 'bg-[#161b22] text-[#8b949e] hover:bg-[#21262d]'
+                ? 'bg-[#201d18] text-white shadow-[inset_0_2px_0_#f0a93b]'
+                : 'bg-[#15130f] text-[#938a7c] hover:bg-[#2a261f]'
             )}
             onClick={() => setActiveTab(tab.path)}
           >
@@ -63,7 +66,7 @@ export function CodeEditor() {
               type="button"
               title={tab.isDirty ? 'Unsaved changes' : 'Close'}
               className={cn(
-                'shrink-0 p-0.5 rounded hover:bg-[#30363d]',
+                'shrink-0 p-0.5 rounded hover:bg-[#2d2921]',
                 tab.isDirty ? '' : activeTabPath === tab.path ? '' : 'opacity-0 group-hover:opacity-100'
               )}
               onClick={(e) => {
@@ -73,7 +76,7 @@ export function CodeEditor() {
             >
               {tab.isDirty ? (
                 <>
-                  <Circle size={8} className="fill-current text-[#e6e6e6] group-hover:hidden" />
+                  <Circle size={8} className="fill-current text-[#f0a93b] group-hover:hidden" />
                   <X size={12} className="hidden group-hover:block" />
                 </>
               ) : (
@@ -88,7 +91,7 @@ export function CodeEditor() {
             type="button"
             disabled
             title="Split editor (coming later)"
-            className="p-1.5 rounded text-[#484f58] cursor-not-allowed"
+            className="p-1.5 rounded text-[#4a4338] cursor-not-allowed"
           >
             <SplitSquareHorizontal size={14} />
           </button>
@@ -97,7 +100,7 @@ export function CodeEditor() {
             onClick={() => void runActiveFile()}
             disabled={!activeTab}
             title={activeTab?.language === 'html' ? 'Preview' : 'Run file'}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded text-[#e6edf3] hover:bg-[#21262d] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded text-[#ece6da] hover:bg-[#2a261f] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {activeTab?.language === 'html' ? <Eye size={13} /> : <Play size={13} />}
             {activeTab?.language === 'html' ? 'Preview' : 'Run'}
@@ -107,11 +110,11 @@ export function CodeEditor() {
 
       {/* Breadcrumbs, like Cursor: folders, then the file */}
       {activeTab && (
-        <div className="flex items-center gap-1 px-3 h-6 min-w-0 text-[11px] text-[#8b949e] bg-[#0d1117] border-b border-[#21262d]">
+        <div className="flex items-center gap-1 px-3 h-6 min-w-0 text-[11px] text-[#938a7c] bg-[#201d18] border-b border-[#2a261f]">
           {activeTab.path.split('/').map((seg, i, all) => (
             <span key={i} className="flex items-center gap-1 min-w-0">
-              {i > 0 && <ChevronRight size={10} className="shrink-0 text-[#6e7681]" />}
-              <span className={cn('truncate', i === all.length - 1 && 'text-[#c9d1d9]')}>{seg}</span>
+              {i > 0 && <ChevronRight size={10} className="shrink-0 text-[#6f675a]" />}
+              <span className={cn('truncate', i === all.length - 1 && 'text-[#d9d2c4]')}>{seg}</span>
             </span>
           ))}
         </div>
@@ -119,15 +122,15 @@ export function CodeEditor() {
 
       {/* Undo / Redo bar after an applied change */}
       {!activeDiff && activeTab && (canUndo || canRedo) && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#161b22] border-b border-[#30363d] shrink-0">
-          <span className="text-xs text-[#8b949e]">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#15130f] border-b border-[#2d2921] shrink-0">
+          <span className="text-xs text-[#938a7c]">
             {canUndo ? `Change applied to ${activeTab.name}` : `Change undone in ${activeTab.name}`}
           </span>
           <div className="flex gap-1.5">
             {canUndo && (
               <button
                 onClick={undoLastAccept}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#2a261f] hover:bg-[#2d2921] text-[#ece6da] rounded border border-[#2d2921]"
               >
                 <Undo2 size={12} /> Undo
               </button>
@@ -135,7 +138,7 @@ export function CodeEditor() {
             {canRedo && (
               <button
                 onClick={redoLastUndo}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#2a261f] hover:bg-[#2d2921] text-[#ece6da] rounded border border-[#2d2921]"
               >
                 <Redo2 size={12} /> Redo
               </button>
@@ -146,18 +149,18 @@ export function CodeEditor() {
 
       {/* Apply / Decline bar for a proposed change */}
       {activeDiff && activeTab && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#161b22] border-b border-[#30363d] shrink-0">
-          <span className="text-xs text-[#8b949e]">Proposed change to {activeTab.name}</span>
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#15130f] border-b border-[#2d2921] shrink-0">
+          <span className="text-xs text-[#938a7c]">Proposed change to {activeTab.name}</span>
           <div className="flex gap-1.5">
             <button
               onClick={() => void applyPending(activeDiff.path)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#238636] hover:bg-[#2ea043] text-white rounded"
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#f0a93b] hover:bg-[#f5b952] text-[#1a1407] rounded"
             >
               <Check size={12} /> Apply
             </button>
             <button
               onClick={() => declinePending(activeDiff.path)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#2a261f] hover:bg-[#2d2921] text-[#ece6da] rounded border border-[#2d2921]"
             >
               <X size={12} /> Decline
             </button>
@@ -179,7 +182,10 @@ export function CodeEditor() {
         ) : projectId && isBinaryName(activeTab.name) ? (
           <FileViewer projectId={projectId} path={activeTab.path} name={activeTab.name} />
         ) : activeDiff ? (
-          <InlineDiff original={activeDiff.original} modified={activeDiff.modified} />
+          <div className="relative h-full">
+            <InlineDiff original={activeDiff.original} modified={activeDiff.modified} path={activeDiff.path} />
+            {!isCreatePending(activeDiff.path) && <ReviewBar path={activeDiff.path} />}
+          </div>
         ) : (
           <Editor
             height="100%"
@@ -192,7 +198,7 @@ export function CodeEditor() {
               attachEditorStatus(editor)
               setRevealEditor(editor)
             }}
-            theme="vs-dark"
+            theme="spectrum-warm"
             onChange={(value) => {
               if (value !== undefined) updateTabContent(activeTab.path, value)
             }}

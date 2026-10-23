@@ -12,7 +12,7 @@ const LINE_CLASS: Record<string, string> = {
   log: 'text-[#cccccc]',
   prompt: 'text-[#cccccc]',
   error: 'text-[#f48771]',
-  info: 'text-[#8b949e]',
+  info: 'text-[#938a7c]',
 }
 
 // The typing line. It is editable text, so long answers wrap onto new lines like the rest of the output.
@@ -75,7 +75,7 @@ export function OutputBody() {
 
   return (
     <div
-      className="absolute inset-0 overflow-auto px-3 py-2 text-[13px] leading-[19px] whitespace-pre-wrap bg-[#1e1e1e]"
+      className="absolute inset-0 overflow-auto px-3 py-2 text-[13px] leading-[19px] whitespace-pre-wrap bg-[#201d18]"
       style={{ fontFamily: EDITOR_FONT }}
     >
       {lines.map((l, i) => {
@@ -90,7 +90,7 @@ export function OutputBody() {
       })}
       {input !== null && !endsWithPrompt && <InputLine key={input} id={input} />}
       {lines.length === 0 && status !== 'running' && input === null && (
-        <span className="text-[#8b949e]">No output.</span>
+        <span className="text-[#938a7c]">No output.</span>
       )}
     </div>
   )

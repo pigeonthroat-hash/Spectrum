@@ -14,13 +14,13 @@ export function WelcomeScreen() {
       <img src={logo} alt="Spectrum logo" className="w-14 h-auto opacity-80" />
       <div className="w-72 flex flex-col gap-1">
         {SHORTCUTS.map((s) => (
-          <div key={s.label} className="flex items-center justify-between px-2 py-1 text-[13px] text-[#6e7681]">
+          <div key={s.label} className="flex items-center justify-between px-2 py-1 text-[13px] text-[#6f675a]">
             <span>{s.label}</span>
             <span className="flex items-center gap-1">
               {s.keys.map((k) => (
                 <kbd
                   key={k}
-                  className="min-w-[22px] px-1.5 py-0.5 rounded border border-[#30363d] bg-[#161b22] text-center text-[11px] text-[#8b949e] font-sans"
+                  className="min-w-[22px] px-1.5 py-0.5 rounded border border-[#2d2921] bg-[#15130f] text-center text-[11px] text-[#938a7c] font-sans"
                 >
                   {k}
                 </kbd>

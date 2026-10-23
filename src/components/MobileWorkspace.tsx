@@ -26,7 +26,7 @@ export function MobileWorkspace() {
         </div>
       </div>
 
-      <nav className="shrink-0 grid grid-cols-3 border-t border-[#30363d] bg-[#161b22] pb-[env(safe-area-inset-bottom)]">
+      <nav className="shrink-0 grid grid-cols-3 border-t border-[#2d2921] bg-[#15130f] pb-[env(safe-area-inset-bottom)]">
         {VIEWS.map((v) => {
           const Icon = v.icon
           const active = view === v.id
@@ -36,7 +36,7 @@ export function MobileWorkspace() {
               onClick={() => setView(v.id)}
               className={cn(
                 'flex flex-col items-center gap-0.5 py-2 text-[11px]',
-                active ? 'text-white' : 'text-[#8b949e]'
+                active ? 'text-white' : 'text-[#938a7c]'
               )}
             >
               <Icon size={18} />

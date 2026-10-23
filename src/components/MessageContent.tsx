@@ -79,7 +79,7 @@ function InlineText({ text, base, reveal }: { text: string; base: number; reveal
         }
         if (p.startsWith('`') && p.endsWith('`') && p.length > 2) {
           return (
-            <code key={i} className="px-1 py-0.5 rounded bg-[#21262d] text-[12px] font-mono text-[#e6edf3]">
+            <code key={i} className="px-1 py-0.5 rounded bg-[#2a261f] text-[12px] font-mono text-[#ece6da]">
               <Word text={p.slice(1, -1)} at={at + 1} reveal={reveal} />
             </code>
           )
@@ -136,14 +136,14 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
   }
 
   return (
-    <div className="rounded border border-[#30363d] bg-[#0d1117] overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-2 py-0.5 bg-[#161b22] border-b border-[#30363d] text-[11px] text-[#8b949e]">
+    <div className="rounded border border-[#2d2921] bg-[#1a1814] overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-2 py-0.5 bg-[#15130f] border-b border-[#2d2921] text-[11px] text-[#938a7c]">
         <span className="truncate font-mono">{lang}</span>
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={copy}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm hover:text-[#e6edf3] hover:bg-[#21262d]"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm hover:text-[#ece6da] hover:bg-[#2a261f]"
           >
             {copied ? <Check size={11} /> : <Copy size={11} />}
             {copied ? 'Copied' : 'Copy'}
@@ -151,14 +151,14 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           <button
             type="button"
             onClick={saveAsNewFile}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm hover:text-[#e6edf3] hover:bg-[#21262d]"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm hover:text-[#ece6da] hover:bg-[#2a261f]"
           >
             <FilePlus size={11} />
             Save as new file
           </button>
         </div>
       </div>
-      <pre className="p-2.5 overflow-x-auto text-[12px] leading-5 font-mono text-[#c9d1d9] whitespace-pre">{code}</pre>
+      <pre className="p-2.5 overflow-x-auto text-[12px] leading-5 font-mono text-[#d9d2c4] whitespace-pre">{code}</pre>
     </div>
   )
 }

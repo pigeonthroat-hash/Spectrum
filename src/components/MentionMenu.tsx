@@ -54,13 +54,13 @@ function Row({
       onMouseEnter={onHover}
       className={cn(
         'flex w-full items-center gap-2.5 px-3 h-8 text-left text-[13px]',
-        disabled ? 'text-[#5c606a] cursor-not-allowed' : 'text-[#d4d4d4]',
-        !disabled && (highlighted ? 'bg-[#2a2d35]' : 'hover:bg-[#2a2d35]')
+        disabled ? 'text-[#6f675a] cursor-not-allowed' : 'text-[#d4d4d4]',
+        !disabled && (highlighted ? 'bg-[#2a261f]' : 'hover:bg-[#2a261f]')
       )}
     >
-      {Icon && <Icon size={15} className={cn('shrink-0', disabled ? 'text-[#4d515b]' : 'text-[#a0a4ad]')} />}
+      {Icon && <Icon size={15} className={cn('shrink-0', disabled ? 'text-[#5c554a]' : 'text-[#a39a8b]')} />}
       <span className="truncate">{label}</span>
-      {detail && <span className="truncate text-[12px] text-[#7d818c]">{detail}</span>}
+      {detail && <span className="truncate text-[12px] text-[#938a7c]">{detail}</span>}
       {right && <span className="ml-auto flex shrink-0 items-center">{right}</span>}
     </button>
   )
@@ -105,8 +105,8 @@ export function MentionMenu({
         disabled={!t.available}
         title={t.available ? t.description : 'Coming soon: ' + (t.needs ?? '')}
         right={
-          t.available ? (on ? <Check size={14} className="text-[#e6e6e6]" /> : null) : (
-            <span className="text-[11px] text-[#5c606a]">Coming soon</span>
+          t.available ? (on ? <Check size={14} className="text-[#f0a93b]" /> : null) : (
+            <span className="text-[11px] text-[#6f675a]">Coming soon</span>
           )
         }
         onPress={() => {
@@ -135,9 +135,9 @@ export function MentionMenu({
     )
   }
 
-  const Divider = () => <div className="my-1 border-t border-[#2c2f36]" />
+  const Divider = () => <div className="my-1 border-t border-[#2a261f]" />
   const Heading = ({ children }: { children: React.ReactNode }) => (
-    <div className="px-3 pt-2 pb-1 text-[12px] text-[#7d818c]">{children}</div>
+    <div className="px-3 pt-2 pb-1 text-[12px] text-[#938a7c]">{children}</div>
   )
   const Back = ({ label }: { label: string }) => (
     <button
@@ -146,15 +146,15 @@ export function MentionMenu({
         e.preventDefault()
         setView('root')
       }}
-      className="flex w-full items-center gap-2 px-3 h-8 text-left text-[13px] text-[#d4d4d4] hover:bg-[#2a2d35]"
+      className="flex w-full items-center gap-2 px-3 h-8 text-left text-[13px] text-[#d4d4d4] hover:bg-[#2a261f]"
     >
-      <ChevronLeft size={15} className="text-[#a0a4ad]" />
+      <ChevronLeft size={15} className="text-[#a39a8b]" />
       {label}
     </button>
   )
 
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-2 z-20 max-h-80 overflow-y-auto rounded-xl border border-[#2c2f36] bg-[#1c1f25] py-1 shadow-2xl anim-pop">
+    <div className="absolute bottom-full left-0 right-0 mb-2 z-20 max-h-80 overflow-y-auto rounded-xl border border-[#2a261f] bg-[#1f1b15] py-1 shadow-2xl anim-pop">
       <div key={view} className="anim-fade-up">
       {view === 'root' && (
         <>
@@ -162,7 +162,7 @@ export function MentionMenu({
             {query ? (
               <span className="text-[#d4d4d4]">{query}</span>
             ) : (
-              <span className="text-[#6b6f78]">Add files, folders, docs...</span>
+              <span className="text-[#6f675a]">Add files, folders, docs...</span>
             )}
           </div>
 
@@ -170,7 +170,7 @@ export function MentionMenu({
             <>
               <Heading>Files</Heading>
               {files.length === 0 ? (
-                <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching files</div>
+                <div className="px-3 py-1.5 text-[12px] text-[#938a7c]">No matching files</div>
               ) : (
                 files.map(fileRow)
               )}
@@ -193,13 +193,13 @@ export function MentionMenu({
               <Row
                 icon={Copy}
                 label="Files & Folders"
-                right={<ChevronRight size={14} className="text-[#7d818c]" />}
+                right={<ChevronRight size={14} className="text-[#938a7c]" />}
                 onPress={() => setView('files')}
               />
               <Row
                 icon={Wrench}
                 label="Tools"
-                right={<ChevronRight size={14} className="text-[#7d818c]" />}
+                right={<ChevronRight size={14} className="text-[#938a7c]" />}
                 onPress={() => setView('tools')}
               />
             </>
@@ -212,7 +212,7 @@ export function MentionMenu({
           <Back label="Files & Folders" />
           <Divider />
           {files.length === 0 ? (
-            <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching files</div>
+            <div className="px-3 py-1.5 text-[12px] text-[#938a7c]">No matching files</div>
           ) : (
             files.map(fileRow)
           )}
@@ -224,7 +224,7 @@ export function MentionMenu({
           <Back label="Tools" />
           <Divider />
           {tools.length === 0 ? (
-            <div className="px-3 py-1.5 text-[12px] text-[#7d818c]">No matching tools</div>
+            <div className="px-3 py-1.5 text-[12px] text-[#938a7c]">No matching tools</div>
           ) : (
             tools.map(toolRow)
           )}

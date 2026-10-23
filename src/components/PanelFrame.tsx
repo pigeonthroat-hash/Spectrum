@@ -34,16 +34,16 @@ export function PanelFrame({ id, title, children }: { id: PanelId; title: string
   }
 
   return (
-    <div className="h-full flex flex-col min-w-0 min-h-0 bg-[#0d1117]">
+    <div className="h-full flex flex-col min-w-0 min-h-0 bg-[#1a1814]">
       <div
         onPointerDown={onHeaderPointerDown}
         onDoubleClick={() => toggleMaximized(id)}
         title="Drag to move. Double-click to maximize."
-        className="h-7 shrink-0 flex items-center justify-between gap-2 px-2 border-b border-[#30363d] bg-[#161b22] select-none cursor-grab active:cursor-grabbing"
+        className="h-7 shrink-0 flex items-center justify-between gap-2 px-2 border-b border-[#2d2921] bg-[#15130f] select-none cursor-grab active:cursor-grabbing"
       >
         <div className="flex items-center gap-1.5 min-w-0">
-          <GripVertical size={12} className="text-[#484f58] shrink-0" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8b949e] truncate">
+          <GripVertical size={12} className="text-[#4a4338] shrink-0" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#938a7c] truncate">
             {title}
           </span>
         </div>
@@ -69,7 +69,7 @@ function HeaderButton({ title, onClick, children }: { title: string; onClick: ()
     <button
       title={title}
       onClick={onClick}
-      className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+      className="p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
     >
       {children}
     </button>

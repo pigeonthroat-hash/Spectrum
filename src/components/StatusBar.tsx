@@ -42,7 +42,7 @@ export function StatusBar() {
   const { line, column, tabSize, eol } = useEditorStatus()
 
   return (
-    <footer className="h-6 flex items-center justify-between px-2 border-t border-[#30363d] bg-[#161b22] text-[11px] text-[#8b949e] shrink-0 select-none">
+    <footer className="h-6 flex items-center justify-between px-2 border-t border-[#2d2921] bg-[#15130f] text-[11px] text-[#938a7c] shrink-0 select-none">
       <div className="flex items-center gap-3 min-w-0">
         <span className="flex items-center gap-1" title="Errors and warnings">
           <XCircle size={11} />
@@ -52,7 +52,7 @@ export function StatusBar() {
         </span>
         <span>{SAVE_LABEL[saveStatus]}</span>
         {remaining !== null && <span>Groq requests left today: {remaining}</span>}
-        <span className="hidden md:inline text-[#3fb950]">● Free models enabled</span>
+        <span className="hidden md:inline text-[#f0a93b]">● Free models enabled</span>
       </div>
       <div className="hidden md:flex items-center gap-3">
         {activeTabPath && (

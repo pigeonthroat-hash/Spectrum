@@ -51,10 +51,10 @@ export function ToolBlock({ block }: { block: ToolBlockData }) {
     const pending = pendingDiffs.some((d) => d.path === path)
     const { plus, minus } = countsOf(block)
     return (
-      <div className="rounded-md border border-[#2c2f36] bg-[#161b22] text-xs">
+      <div className="rounded-md border border-[#2a261f] bg-[#15130f] text-xs">
         <div className="flex items-center gap-2 px-2.5 py-1.5">
-          <FilePen size={12} className="text-[#8b949e] shrink-0" />
-          <span className="truncate text-[#e6e6e6]">{path || block.name}</span>
+          <FilePen size={12} className="text-[#938a7c] shrink-0" />
+          <span className="truncate text-[#f0a93b]">{path || block.name}</span>
           <span className="text-[#3fb950] shrink-0">+{plus}</span>
           <span className="text-[#f85149] shrink-0">-{minus}</span>
           {pending ? (
@@ -63,7 +63,7 @@ export function ToolBlock({ block }: { block: ToolBlockData }) {
                 type="button"
                 onClick={() => declinePending(path)}
                 title="Decline"
-                className="p-1 rounded text-[#8b949e] hover:text-[#f85149] hover:bg-[#21262d]"
+                className="p-1 rounded text-[#938a7c] hover:text-[#f85149] hover:bg-[#2a261f]"
               >
                 <X size={12} />
               </button>
@@ -71,13 +71,13 @@ export function ToolBlock({ block }: { block: ToolBlockData }) {
                 type="button"
                 onClick={() => void applyPending(path)}
                 title="Apply"
-                className="p-1 rounded text-[#8b949e] hover:text-[#3fb950] hover:bg-[#21262d]"
+                className="p-1 rounded text-[#938a7c] hover:text-[#f0a93b] hover:bg-[#2a261f]"
               >
                 <Check size={12} />
               </button>
             </span>
           ) : (
-            <span className="ml-auto text-[10px] text-[#6e7681] shrink-0">
+            <span className="ml-auto text-[10px] text-[#6f675a] shrink-0">
               {failed ? 'Failed' : running ? 'Waiting' : 'Done'}
             </span>
           )}
@@ -107,19 +107,19 @@ export function ToolBlock({ block }: { block: ToolBlockData }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 py-1 text-left text-[#a0a4ad] hover:text-[#e6e6e6]"
+        className="w-full flex items-center gap-2 py-1 text-left text-[#a39a8b] hover:text-[#f0a93b]"
       >
         {waiting ? (
           <Clock size={12} className="text-[#d29922] shrink-0" />
         ) : running ? (
-          <Loader2 size={12} className="animate-spin text-[#8b949e] shrink-0" />
+          <Loader2 size={12} className="animate-spin text-[#938a7c] shrink-0" />
         ) : failed ? (
           <X size={12} className="text-[#f85149] shrink-0" />
         ) : (
-          <Icon size={12} className="text-[#8b949e] shrink-0" />
+          <Icon size={12} className="text-[#938a7c] shrink-0" />
         )}
         <span className="flex-1 truncate">{waiting ? 'Waiting for approval' : label}</span>
-        <ChevronDown size={12} className={cn('text-[#8b949e] shrink-0 transition-transform', expanded && 'rotate-180')} />
+        <ChevronDown size={12} className={cn('text-[#938a7c] shrink-0 transition-transform', expanded && 'rotate-180')} />
       </button>
 
       {waiting && (
@@ -138,14 +138,14 @@ export function ToolBlock({ block }: { block: ToolBlockData }) {
       <div style={{ display: 'grid', gridTemplateRows: expanded ? '1fr' : '0fr', transition: 'grid-template-rows 150ms ease-out' }}>
         <div className="overflow-hidden min-h-0">
           <div className="pl-5 py-1.5 space-y-2">
-            <pre className="whitespace-pre-wrap break-all text-[#c9d1d9] font-mono text-[11px] max-h-48 overflow-y-auto">
+            <pre className="whitespace-pre-wrap break-all text-[#d9d2c4] font-mono text-[11px] max-h-48 overflow-y-auto">
               {block.input}
             </pre>
             {block.output !== undefined && (
               <pre
                 className={cn(
-                  'whitespace-pre-wrap break-all font-mono text-[11px] max-h-48 overflow-y-auto border-t border-[#21262d] pt-2',
-                  failed ? 'text-[#f85149]' : 'text-[#8b949e]'
+                  'whitespace-pre-wrap break-all font-mono text-[11px] max-h-48 overflow-y-auto border-t border-[#2a261f] pt-2',
+                  failed ? 'text-[#f85149]' : 'text-[#938a7c]'
                 )}
               >
                 {block.output}

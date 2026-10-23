@@ -29,12 +29,12 @@ export function AutoApplyMenu({ onChoose }: { onChoose: (scope: AutoApplyScope) 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] rounded border border-[#30363d]"
+        className="flex items-center gap-1 px-2 py-1 text-xs bg-[#2a261f] hover:bg-[#2d2921] text-[#ece6da] rounded border border-[#2d2921]"
       >
         Apply Automatically <ChevronDown size={12} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 w-72 rounded-md border border-[#30363d] bg-[#161b22] shadow-xl py-1">
+        <div className="absolute right-0 top-full mt-1 z-30 w-72 rounded-md border border-[#2d2921] bg-[#15130f] shadow-xl py-1">
           {OPTIONS.map((o) => (
             <button
               key={o.scope}
@@ -43,7 +43,7 @@ export function AutoApplyMenu({ onChoose }: { onChoose: (scope: AutoApplyScope) 
                 setOpen(false)
                 onChoose(o.scope)
               }}
-              className="w-full text-left px-3 py-1.5 text-xs text-[#e6edf3] hover:bg-[#21262d]"
+              className="w-full text-left px-3 py-1.5 text-xs text-[#ece6da] hover:bg-[#2a261f]"
             >
               {o.label}
             </button>
@@ -55,7 +55,7 @@ export function AutoApplyMenu({ onChoose }: { onChoose: (scope: AutoApplyScope) 
                 setForever(false)
                 setOpen(false)
               }}
-              className="w-full text-left px-3 py-1.5 text-xs text-[#8b949e] hover:bg-[#21262d] border-t border-[#30363d]"
+              className="w-full text-left px-3 py-1.5 text-xs text-[#938a7c] hover:bg-[#2a261f] border-t border-[#2d2921]"
             >
               Turn off Apply Automatically Forever
             </button>

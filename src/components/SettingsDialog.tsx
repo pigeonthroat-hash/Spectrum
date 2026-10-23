@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { X, Settings, Boxes, Brain, LogOut, Trash2 } from 'lucide-react'
+import { X, Settings, Boxes, Brain, LogOut, Trash2, Keyboard } from 'lucide-react'
+import { SHORTCUT_GROUPS } from '../lib/shortcuts'
 import { useAppStore, type ChatStyle } from '../store/useAppStore'
 import { cn } from '../lib/utils'
 import { BrowserModelsSection } from './BrowserModelsSection'
@@ -10,12 +11,13 @@ import { loadMemory, removeMemory, replaceMemory } from '../lib/agent/memory'
 import { Pencil, Check as CheckIcon, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-type Tab = 'general' | 'models' | 'memory'
+type Tab = 'general' | 'models' | 'memory' | 'shortcuts'
 
 const TABS: { id: Tab; label: string; icon: typeof Settings }[] = [
   { id: 'general', label: 'General', icon: Settings },
   { id: 'models', label: 'Models', icon: Boxes },
   { id: 'memory', label: 'Memory', icon: Brain },
+  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
 ]
 
 const CHAT_STYLES: { value: ChatStyle; label: string; desc: string }[] = [
@@ -23,8 +25,8 @@ const CHAT_STYLES: { value: ChatStyle; label: string; desc: string }[] = [
   { value: 'liquid', label: 'Liquid glass', desc: 'Glass effect on the chat box only' },
 ]
 
-const sectionTitle = 'text-sm font-semibold text-[#e6edf3]'
-const sectionText = 'text-xs text-[#8b949e] mt-1'
+const sectionTitle = 'text-sm font-semibold text-[#ece6da]'
+const sectionText = 'text-xs text-[#938a7c] mt-1'
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('general')
@@ -88,19 +90,19 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   return (
     <div className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50" onMouseDown={onClose}>
       <div
-        className="anim-pop w-[640px] max-w-[94vw] h-[460px] max-h-[88vh] flex flex-col bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl"
+        className="anim-pop w-[640px] max-w-[94vw] h-[460px] max-h-[88vh] flex flex-col bg-[#15130f] border border-[#2d2921] rounded-lg shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d]">
-          <span className="text-sm font-semibold text-[#e6edf3]">Settings</span>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[#21262d] text-[#8b949e]">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2d2921]">
+          <span className="text-sm font-semibold text-[#ece6da]">Settings</span>
+          <button onClick={onClose} className="p-1 rounded hover:bg-[#2a261f] text-[#938a7c]">
             <X size={14} />
           </button>
         </div>
 
         <div className="flex flex-1 min-h-0">
           {/* Left menu */}
-          <nav className="w-40 shrink-0 border-r border-[#30363d] p-2 space-y-0.5">
+          <nav className="w-40 shrink-0 border-r border-[#2d2921] p-2 space-y-0.5">
             {TABS.map((t) => {
               const Icon = t.icon
               return (
@@ -109,7 +111,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   onClick={() => setTab(t.id)}
                   className={cn(
                     'w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm text-left',
-                    tab === t.id ? 'bg-[#21262d] text-[#e6edf3]' : 'text-[#8b949e] hover:bg-[#21262d]'
+                    tab === t.id ? 'bg-[#2a261f] text-[#ece6da]' : 'text-[#938a7c] hover:bg-[#2a261f]'
                   )}
                 >
                   <Icon size={14} /> {t.label}
@@ -127,7 +129,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   <p className={sectionText}>
                     {email ? (
                       <>
-                        Signed in as <span className="text-[#e6edf3]">{email}</span>.
+                        Signed in as <span className="text-[#ece6da]">{email}</span>.
                       </>
                     ) : (
                       'You are not signed in. Use the account icon in the top bar.'
@@ -136,7 +138,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   {email && (
                     <button
                       onClick={signOut}
-                      className="mt-2 flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d]"
+                      className="mt-2 flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-[#2d2921] bg-[#2a261f] text-[#ece6da] hover:bg-[#2d2921]"
                     >
                       <LogOut size={12} /> Sign out
                     </button>
@@ -149,7 +151,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     When on, proposed edits and new files are applied without asking. You can also turn this on from
                     the Apply Automatically menu.
                   </p>
-                  <label className="mt-2 flex items-center justify-between gap-4 text-sm text-[#e6edf3]">
+                  <label className="mt-2 flex items-center justify-between gap-4 text-sm text-[#ece6da]">
                     Apply Automatically Forever
                     <button
                       type="button"
@@ -158,7 +160,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                       onClick={toggleForever}
                       className={cn(
                         'relative w-9 h-5 rounded-full transition-colors',
-                        forever ? 'bg-[#238636]' : 'bg-[#30363d]'
+                        forever ? 'bg-[#f0a93b]' : 'bg-[#2d2921]'
                       )}
                     >
                       <span
@@ -173,7 +175,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     When on, code the AI wants to run runs without asking. You can also turn this on from the Run
                     Automatically menu.
                   </p>
-                  <label className="mt-2 flex items-center justify-between gap-4 text-sm text-[#e6edf3]">
+                  <label className="mt-2 flex items-center justify-between gap-4 text-sm text-[#ece6da]">
                     Run Automatically Forever
                     <button
                       type="button"
@@ -182,7 +184,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                       onClick={toggleRunForever}
                       className={cn(
                         'relative w-9 h-5 rounded-full transition-colors',
-                        runForever ? 'bg-[#238636]' : 'bg-[#30363d]'
+                        runForever ? 'bg-[#f0a93b]' : 'bg-[#2d2921]'
                       )}
                     >
                       <span
@@ -204,11 +206,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         onClick={() => setChatStyle(o.value)}
                         className={cn(
                           'w-full text-left px-3 py-2 rounded border text-xs',
-                          chatStyle === o.value ? 'border-[#58a6ff] bg-[#21262d]' : 'border-[#30363d] hover:bg-[#21262d]'
+                          chatStyle === o.value ? 'border-[#f0a93b] bg-[#2a261f]' : 'border-[#2d2921] hover:bg-[#2a261f]'
                         )}
                       >
-                        <span className="block text-sm text-[#e6edf3]">{o.label}</span>
-                        <span className="block text-[#8b949e]">{o.desc}</span>
+                        <span className="block text-sm text-[#ece6da]">{o.label}</span>
+                        <span className="block text-[#938a7c]">{o.desc}</span>
                       </button>
                     ))}
                   </div>
@@ -224,7 +226,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   <select
                     value={selectedModel}
                     onChange={(e) => setModel(e.target.value)}
-                    className="mt-2 w-full px-2 py-1.5 text-sm rounded border border-[#30363d] bg-[#0d1117] text-[#e6edf3]"
+                    className="mt-2 w-full px-2 py-1.5 text-sm rounded border border-[#2d2921] bg-[#1a1814] text-[#ece6da]"
                   >
                     <optgroup label="Groq (cloud)">
                       {GROQ_MODELS.map((m) => (
@@ -255,21 +257,44 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               </>
             )}
 
+            {tab === 'shortcuts' && (
+              <div className="space-y-6">
+                {SHORTCUT_GROUPS.map((g) => (
+                  <section key={g.title}>
+                    <p className={sectionTitle}>{g.title}</p>
+                    <div className="mt-2 divide-y divide-[#2d2921] rounded-md border border-[#2d2921]">
+                      {g.items.map((it) => (
+                        <div key={it.label} className="flex items-center justify-between px-3 py-2 text-sm text-[#ece6da]">
+                          <span>{it.label}</span>
+                          <span className="flex gap-1">
+                            {it.keys.map((k) => (
+                              <kbd key={k} className="rounded border border-[#2d2921] bg-[#1a1814] px-1.5 py-0.5 text-[11px] text-[#938a7c]">
+                                {k}
+                              </kbd>
+                            ))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
             {tab === 'memory' && (
               <section>
                 <p className={sectionTitle}>Memory</p>
                 <p className={sectionText}>
                   Notes the AI saved for this project. Edit or delete any note the AI saved.
                 </p>
-                {!projectId && <p className="mt-3 text-xs text-[#8b949e]">Open a project to see its memory.</p>}
+                {!projectId && <p className="mt-3 text-xs text-[#938a7c]">Open a project to see its memory.</p>}
                 {projectId && notes.length === 0 && (
-                  <p className="mt-3 text-xs text-[#8b949e]">No notes yet.</p>
+                  <p className="mt-3 text-xs text-[#938a7c]">No notes yet.</p>
                 )}
                 <ul className="mt-3 space-y-1.5">
                   {notes.map((note, i) => (
                     <li
                       key={i}
-                      className="flex items-start justify-between gap-2 px-2.5 py-2 rounded border border-[#30363d] bg-[#0d1117]"
+                      className="flex items-start justify-between gap-2 px-2.5 py-2 rounded border border-[#2d2921] bg-[#1a1814]"
                     >
                       {editing === i ? (
                         <>
@@ -281,26 +306,26 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                               if (e.key === 'Enter') saveEdit(note)
                               if (e.key === 'Escape') setEditing(null)
                             }}
-                            className="flex-1 bg-transparent text-xs text-[#e6edf3] outline-none border-b border-[#58a6ff]"
+                            className="flex-1 bg-transparent text-xs text-[#ece6da] outline-none border-b border-[#f0a93b]"
                           />
                           <button
                             onClick={() => saveEdit(note)}
                             title="Save note"
-                            className="shrink-0 p-1 rounded text-[#8b949e] hover:text-[#3fb950] hover:bg-[#21262d]"
+                            className="shrink-0 p-1 rounded text-[#938a7c] hover:text-[#f0a93b] hover:bg-[#2a261f]"
                           >
                             <CheckIcon size={12} />
                           </button>
                           <button
                             onClick={() => setEditing(null)}
                             title="Cancel"
-                            className="shrink-0 p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+                            className="shrink-0 p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
                           >
                             <XIcon size={12} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <span className="text-xs text-[#e6edf3] break-words">{note}</span>
+                          <span className="text-xs text-[#ece6da] break-words">{note}</span>
                           <div className="flex shrink-0">
                             <button
                               onClick={() => {
@@ -308,14 +333,14 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 setDraft(note)
                               }}
                               title="Edit note"
-                              className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+                              className="p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
                             >
                               <Pencil size={12} />
                             </button>
                             <button
                               onClick={() => deleteNote(note)}
                               title="Delete note"
-                              className="p-1 rounded text-[#8b949e] hover:text-[#ff7b72] hover:bg-[#21262d]"
+                              className="p-1 rounded text-[#938a7c] hover:text-[#ff7b72] hover:bg-[#2a261f]"
                             >
                               <Trash2 size={12} />
                             </button>

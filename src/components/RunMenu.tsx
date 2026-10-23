@@ -9,7 +9,7 @@ const OPTIONS: { label: string; choice: RunChoice }[] = [
   { label: 'Run Automatically Forever', choice: 'forever' },
 ]
 
-const BUTTON = 'flex items-center gap-1 px-2 py-1 text-xs bg-[#21262d] hover:bg-[#30363d] text-[#e6edf3] border border-[#30363d]'
+const BUTTON = 'flex items-center gap-1 px-2 py-1 text-xs bg-[#2a261f] hover:bg-[#2d2921] text-[#ece6da] border border-[#2d2921]'
 
 export function RunMenu({ id }: { id: string }) {
   const [open, setOpen] = useState(false)
@@ -39,7 +39,7 @@ export function RunMenu({ id }: { id: string }) {
         <ChevronDown size={12} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-30 w-72 rounded-md border border-[#30363d] bg-[#161b22] shadow-xl py-1">
+        <div className="absolute left-0 top-full mt-1 z-30 w-72 rounded-md border border-[#2d2921] bg-[#15130f] shadow-xl py-1">
           {OPTIONS.map((o) => (
             <button
               key={o.choice}
@@ -48,7 +48,7 @@ export function RunMenu({ id }: { id: string }) {
                 setOpen(false)
                 answerRun(id, o.choice)
               }}
-              className="w-full text-left px-3 py-1.5 text-xs text-[#e6edf3] hover:bg-[#21262d]"
+              className="w-full text-left px-3 py-1.5 text-xs text-[#ece6da] hover:bg-[#2a261f]"
             >
               {o.label}
             </button>

@@ -42,7 +42,7 @@ export function QuickOpen() {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] bg-black/40" onMouseDown={close}>
       <div
-        className="anim-pop w-[560px] max-w-[92vw] rounded-lg border border-[#30363d] bg-[#161b22] shadow-2xl overflow-hidden"
+        className="anim-pop w-[560px] max-w-[92vw] rounded-lg border border-[#2d2921] bg-[#15130f] shadow-2xl overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <input
@@ -63,11 +63,11 @@ export function QuickOpen() {
             } else if (e.key === 'Enter' && matches[index]) void pick(matches[index])
           }}
           placeholder={projectId ? 'Search files by name' : 'Open a project first'}
-          className="w-full px-3 py-2 bg-transparent border-b border-[#30363d] text-sm text-[#e6edf3] outline-none placeholder:text-[#6e7681]"
+          className="w-full px-3 py-2 bg-transparent border-b border-[#2d2921] text-sm text-[#ece6da] outline-none placeholder:text-[#6f675a]"
         />
         <ul className="max-h-80 overflow-y-auto py-1">
           {matches.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-[#8b949e]">No matching files</li>
+            <li className="px-3 py-2 text-xs text-[#938a7c]">No matching files</li>
           ) : (
             matches.map((p, i) => {
               const slash = p.lastIndexOf('/')
@@ -82,11 +82,11 @@ export function QuickOpen() {
                       e.preventDefault()
                       void pick(p)
                     }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs ${i === index ? 'bg-[#21262d] text-[#e6e6e6]' : 'text-[#c9d1d9]'}`}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs ${i === index ? 'bg-[#2a261f] text-[#f0a93b]' : 'text-[#d9d2c4]'}`}
                   >
-                    <File size={12} className="shrink-0 text-[#8b949e]" />
+                    <File size={12} className="shrink-0 text-[#938a7c]" />
                     <span>{name}</span>
-                    {dir && <span className="ml-auto truncate text-[#6e7681]">{dir}</span>}
+                    {dir && <span className="ml-auto truncate text-[#6f675a]">{dir}</span>}
                   </button>
                 </li>
               )

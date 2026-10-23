@@ -32,11 +32,11 @@ export function StepsGroup({ blocks }: { blocks: ToolBlockData[] }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="rounded-md border border-[#30363d] bg-[#0d1117]">
+      <div className="rounded-md border border-[#2d2921] bg-[#1a1814]">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-[#8b949e] hover:text-[#e6edf3]"
+          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-[#938a7c] hover:text-[#ece6da]"
         >
           <ChevronDown size={12} className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
           <span>{label}</span>

@@ -32,14 +32,14 @@ function BinaryNotice({ projectId, path, name }: { projectId: string; path: stri
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#1e1e1e] text-center">
-      <p className="text-sm text-[#e6edf3]">{name}</p>
-      <p className="text-xs text-[#8b949e]">This file can&apos;t be shown in the editor.</p>
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#201d18] text-center">
+      <p className="text-sm text-[#ece6da]">{name}</p>
+      <p className="text-xs text-[#938a7c]">This file can&apos;t be shown in the editor.</p>
       <button
         type="button"
         onClick={download}
         disabled={busy}
-        className="px-2.5 py-1 text-xs rounded border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d] disabled:opacity-50"
+        className="px-2.5 py-1 text-xs rounded border border-[#2d2921] bg-[#2a261f] text-[#ece6da] hover:bg-[#2d2921] disabled:opacity-50"
       >
         {busy ? 'Preparing...' : 'Download'}
       </button>

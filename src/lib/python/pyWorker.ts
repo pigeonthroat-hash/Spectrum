@@ -1,7 +1,6 @@
 import type { PyodideInterface } from 'pyodide'
 
 // Must match the installed pyodide version. Check it with: npm ls pyodide
-const PYODIDE_VERSION = '314.0.7'
 
 // Loaded from the CDN at runtime, so Vite doesn't bundle Pyodide (its Node-only parts break in browsers)
 type LoadPyodide = (opts: { indexURL: string }) => Promise<PyodideInterface>
@@ -130,7 +129,9 @@ function getPyodide(): Promise<PyodideInterface> {
   if (!pyodidePromise) {
     post({ type: 'status', text: 'Loading Python (first time only)...' })
     pyodidePromise = (async () => {
-      const cdn = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`
+      // The npm package for the pinned version, so the files match what package.json installs
+      // Served from this site (copied in by scripts/copy-pyodide.mjs), not from a CDN
+      const cdn = `${import.meta.env.BASE_URL}pyodide/`
       const mod = (await import(/* @vite-ignore */ `${cdn}pyodide.mjs`)) as { loadPyodide: LoadPyodide }
       const py = await mod.loadPyodide({ indexURL: cdn })
       py.globals.set('spectrum_fs', fsCall)

@@ -6,6 +6,7 @@ import { AccountButton } from './components/AccountButton'
 import { SaveController } from './components/SaveController'
 import { Workspace } from './components/Workspace'
 import { DragGhost } from './components/DragGhost'
+import { GlassSurface } from './components/GlassSurface'
 import { ActivityBar } from './components/ActivityBar'
 import { StatusBar } from './components/StatusBar'
 import { Toasts } from './components/Toasts'
@@ -54,17 +55,17 @@ export default function App() {
   }, [showExplorer, showAI, toggleExplorer, toggleAI])
 
   const toggleClass = (on: boolean) =>
-    `p-1.5 rounded hover:bg-[#21262d] hover:text-white ${on ? 'text-white bg-[#21262d]' : 'text-[#8b949e]'}`
-  const navClass = 'p-1 rounded text-[#484f58] cursor-not-allowed'
+    `p-1.5 rounded hover:bg-[#2a261f] hover:text-white ${on ? 'text-white bg-[#2a261f]' : 'text-[#938a7c]'}`
+  const navClass = 'p-1 rounded text-[#4a4338] cursor-not-allowed'
 
   return (
-    <div className="h-[100dvh] w-screen flex flex-col bg-[#0d1117] text-[#e6edf3] overflow-hidden">
+    <div id="spectrum-root" className="h-[100dvh] w-screen flex flex-col bg-[#1a1814] text-[#ece6da] overflow-clip">
       {/* Title bar: navigation, command bar, and layout toggles, like Cursor */}
-      <header className="h-9 flex items-center gap-2 px-2 border-b border-[#30363d] bg-[#161b22] shrink-0 select-none">
+      <header className="relative overflow-hidden h-9 flex items-center gap-2 px-2 border-b border-[#2d2921] bg-[#15130f] shrink-0 select-none">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <img src={logo} alt="" className="h-4 w-auto" />
-          <span className="font-semibold text-sm tracking-tight text-[#e6edf3]">Spectrum</span>
-          <span className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e]">
+          <span className="font-semibold text-sm tracking-tight text-[#ece6da]">Spectrum</span>
+          <span className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded bg-[#2a261f] text-[#938a7c]">
             v0.1 · Free models
           </span>
           <div className="hidden md:flex items-center gap-0.5 ml-1">
@@ -77,16 +78,22 @@ export default function App() {
           </div>
         </div>
 
-        {/* Command bar: opens Quick Open */}
-        <button
-          type="button"
-          onClick={() => useQuickOpen.getState().setOpen(true)}
-          title="Quick Open (Ctrl+P)"
-          className="hidden md:flex items-center gap-2 w-[min(420px,40vw)] h-6 px-2 rounded-md border border-[#30363d] bg-[#0d1117] text-[11px] text-[#8b949e] hover:border-[#484f58]"
+        {/* Command bar: opens Quick Open. The glass pane sits behind the button and its label. */}
+        <GlassSurface
+          zIndex={50}
+          enabled={false}
+          className="hidden md:block w-[min(420px,40vw)] h-6 rounded-md border border-[#2d2921]"
         >
-          <Search size={12} className="shrink-0" />
-          <span className="truncate flex-1 text-center">{projectName ?? 'Spectrum'}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => useQuickOpen.getState().setOpen(true)}
+            title="Quick Open (Ctrl+P)"
+            className="flex items-center gap-2 w-full h-full px-2 text-[11px] text-[#938a7c] hover:text-[#ece6da]"
+          >
+            <Search size={12} className="shrink-0" />
+            <span className="truncate flex-1 text-center">{projectName ?? 'Spectrum'}</span>
+          </button>
+        </GlassSurface>
 
         <div className="flex items-center gap-1 flex-1 justify-end min-w-0">
           <div className="hidden md:flex items-center gap-1">
@@ -109,7 +116,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setShowSettings(true)}
-            className="p-1.5 rounded hover:bg-[#21262d] text-[#8b949e] hover:text-white"
+            className="p-1.5 rounded hover:bg-[#2a261f] text-[#938a7c] hover:text-white"
             title="Settings"
           >
             <Settings size={16} />

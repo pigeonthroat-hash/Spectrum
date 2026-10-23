@@ -42,7 +42,7 @@ export function FileIcon({ name }: { name: string }) {
     case 'ico':
       return <ImageIcon size={13} className="shrink-0 text-[#8bc34a]" />
     default:
-      return <File size={13} className="shrink-0 text-[#8b949e]" />
+      return <File size={13} className="shrink-0 text-[#938a7c]" />
   }
 }
 

@@ -61,39 +61,39 @@ export function BrowserModelsSection() {
         const s = status[m.id] ?? 'checking'
         const pr = progress[m.id]
         return (
-          <div key={m.id} className="rounded-md border border-[#30363d] p-2">
+          <div key={m.id} className="rounded-md border border-[#2d2921] p-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm text-[#e6edf3] truncate">
+                <p className="text-sm text-[#ece6da] truncate">
                   {m.label}
                   {m.experimental && <span className="ml-1.5 text-[10px] text-[#d29922]">experimental</span>}
                 </p>
-                <p className="text-[11px] text-[#8b949e]">
+                <p className="text-[11px] text-[#938a7c]">
                   ~{m.approxGB} GB · {m.note}
                 </p>
               </div>
               {s === 'cached' && (
-                <span className="flex items-center gap-1 text-[11px] text-[#3fb950] shrink-0">
+                <span className="flex items-center gap-1 text-[11px] text-[#f0a93b] shrink-0">
                   <Check size={12} /> Downloaded
                 </span>
               )}
               {s === 'missing' && (
                 <button
                   onClick={() => download(m.id)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-[#238636] hover:bg-[#2ea043] text-white shrink-0"
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-[#f0a93b] hover:bg-[#f5b952] text-[#1a1407] shrink-0"
                 >
                   <Download size={12} /> Download
                 </button>
               )}
-              {s === 'checking' && <span className="text-[11px] text-[#8b949e] shrink-0">Checking...</span>}
+              {s === 'checking' && <span className="text-[11px] text-[#938a7c] shrink-0">Checking...</span>}
             </div>
 
             {s === 'downloading' && (
               <div className="mt-2">
-                <div className="h-1.5 w-full rounded bg-[#21262d] overflow-hidden">
-                  <div className="h-full bg-[#58a6ff] transition-all" style={{ width: `${Math.round((pr?.p ?? 0) * 100)}%` }} />
+                <div className="h-1.5 w-full rounded bg-[#2a261f] overflow-hidden">
+                  <div className="h-full bg-[#f0a93b] transition-all" style={{ width: `${Math.round((pr?.p ?? 0) * 100)}%` }} />
                 </div>
-                <p className="mt-1 text-[10px] text-[#8b949e] truncate">
+                <p className="mt-1 text-[10px] text-[#938a7c] truncate">
                   {Math.round((pr?.p ?? 0) * 100)}% · {pr?.text ?? 'Starting...'}
                 </p>
               </div>
@@ -103,7 +103,7 @@ export function BrowserModelsSection() {
           </div>
         )
       })}
-      <p className="text-[10px] text-[#8b949e]">
+      <p className="text-[10px] text-[#938a7c]">
         Downloads are stored in this browser for this website. Clearing site data removes them.
       </p>
     </div>

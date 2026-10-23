@@ -70,13 +70,13 @@ export function ImageViewer({ projectId, path, name }: { projectId: string; path
 
   const step = (factor: number) => setZoom(clamp(currentZoom() * factor))
 
-  const button = 'px-2 py-0.5 rounded border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d] text-xs'
+  const button = 'px-2 py-0.5 rounded border border-[#2d2921] bg-[#2a261f] text-[#ece6da] hover:bg-[#2d2921] text-xs'
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[#1e1e1e]">
+    <div className="absolute inset-0 flex flex-col bg-[#201d18]">
       <div ref={viewport} className="flex-1 min-h-0 overflow-auto p-4 flex">
         {error && <p className="m-auto text-sm text-[#ff7b72]">{error}</p>}
-        {!error && !url && <p className="m-auto text-sm text-[#8b949e]">Loading image...</p>}
+        {!error && !url && <p className="m-auto text-sm text-[#938a7c]">Loading image...</p>}
         {url && (
           <img
             src={url}
@@ -94,14 +94,14 @@ export function ImageViewer({ projectId, path, name }: { projectId: string; path
           />
         )}
       </div>
-      <div className="flex items-center justify-between gap-2 px-3 py-1 bg-[#161b22] border-t border-[#30363d] text-xs text-[#8b949e]">
+      <div className="flex items-center justify-between gap-2 px-3 py-1 bg-[#15130f] border-t border-[#2d2921] text-xs text-[#938a7c]">
         <span>{natural ? natural.w + ' × ' + natural.h + ' px' : ''}</span>
         <div className="flex items-center gap-1.5">
           <button type="button" className={button} onClick={() => step(0.8)}>−</button>
           <button type="button" className={button} onClick={() => setZoom(null)}>Fit</button>
           <button type="button" className={button} onClick={() => setZoom(1)}>100%</button>
           <button type="button" className={button} onClick={() => step(1.25)}>+</button>
-          <span className="w-12 text-right text-[#e6edf3]">
+          <span className="w-12 text-right text-[#ece6da]">
             {zoom === null ? 'Fit' : Math.round(zoom * 100) + '%'}
           </span>
         </div>

@@ -32,13 +32,13 @@ export function SessionsList() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
       <div className="flex items-center justify-between px-1 pb-2">
-        <span className="text-xs font-semibold text-[#e6edf3]">Sessions</span>
+        <span className="text-xs font-semibold text-[#ece6da]">Sessions</span>
         <div className="flex items-center gap-0.5">
           <button
             type="button"
             title="Refresh"
             onClick={() => projectId && void refreshChatList(projectId)}
-            className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+            className="p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
           >
             <RotateCw size={13} />
           </button>
@@ -46,7 +46,7 @@ export function SessionsList() {
             type="button"
             title="Search"
             onClick={() => setSearching((v) => !v)}
-            className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+            className="p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
           >
             <Search size={13} />
           </button>
@@ -54,7 +54,7 @@ export function SessionsList() {
             type="button"
             title="Close"
             onClick={() => setShowList(false)}
-            className="p-1 rounded text-[#8b949e] hover:text-white hover:bg-[#21262d]"
+            className="p-1 rounded text-[#938a7c] hover:text-white hover:bg-[#2a261f]"
           >
             <X size={13} />
           </button>
@@ -67,12 +67,12 @@ export function SessionsList() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search chats"
-          className="mb-2 w-full rounded bg-[#0d1117] border border-[#30363d] px-2 py-1 text-xs text-[#e6edf3] outline-none focus:border-[#58a6ff]"
+          className="mb-2 w-full rounded bg-[#1a1814] border border-[#2d2921] px-2 py-1 text-xs text-[#ece6da] outline-none focus:border-[#f0a93b]"
         />
       )}
 
-      {!projectId && <p className="px-1 py-2 text-xs text-[#8b949e]">Open a workspace to save chats.</p>}
-      {projectId && shown.length === 0 && <p className="px-1 py-2 text-xs text-[#8b949e]">No saved chats yet.</p>}
+      {!projectId && <p className="px-1 py-2 text-xs text-[#938a7c]">Open a workspace to save chats.</p>}
+      {projectId && shown.length === 0 && <p className="px-1 py-2 text-xs text-[#938a7c]">No saved chats yet.</p>}
 
       {shown.map((c) => (
         <button
@@ -83,16 +83,16 @@ export function SessionsList() {
             if (projectId) void openChat(projectId, c.id)
           }}
           className={cn(
-            'w-full flex items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-[#21262d]',
-            c.id === chatId && 'bg-[#21262d]'
+            'w-full flex items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-[#2a261f]',
+            c.id === chatId && 'bg-[#2a261f]'
           )}
         >
-          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#8b949e]" />
+          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#938a7c]" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm text-[#e6edf3]">{c.title}</span>
-            <span className="block text-[11px] text-[#8b949e]">{ago(c.updatedAt)}</span>
+            <span className="block truncate text-sm text-[#ece6da]">{c.title}</span>
+            <span className="block text-[11px] text-[#938a7c]">{ago(c.updatedAt)}</span>
           </span>
-          {c.id === chatId && <Check size={13} className="mt-1 shrink-0 text-[#8b949e]" />}
+          {c.id === chatId && <Check size={13} className="mt-1 shrink-0 text-[#938a7c]" />}
         </button>
       ))}
     </div>

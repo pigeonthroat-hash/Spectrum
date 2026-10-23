@@ -4,9 +4,11 @@ import { useToolToggles } from '../lib/tools/toggles'
 import { useAttachments } from '../lib/chat/attachments'
 import { isBinaryName } from '../lib/files/kinds'
 import { useState, useRef, useEffect } from 'react'
-import { useAppStore } from '../store/useAppStore'
+import { useAppStore, type ChatMessage } from '../store/useAppStore'
 import { Loader2, Sparkles, File, Square } from 'lucide-react'
 import { ChatInput } from './ChatInput'
+import { ChatBody } from './ChatBody'
+import { MessageList } from './MessageList'
 import { runAgent } from '../lib/agent/runAgent'
 import { plainText, type Block } from '../lib/agent/types'
 import { errorText } from '../lib/errors'
@@ -19,6 +21,10 @@ import { applyPending, declinePending } from '../lib/agent/applyChange'
 import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 import { ChatHeader } from './ChatHeader'
 import { StepsGroup, groupBlocks } from './StepsGroup'
+import { PastChats } from './PastChats'
+import { ChatTabs } from './ChatTabs'
+import { ReplyParts } from './ReplyParts'
+import { attachReviewToLastReply } from '../lib/chats/replyMeta'
 import { persistCurrentChat, ageChats, refreshChatList, useChatList } from '../lib/chats/chatStore'
 import { SessionsList } from './SessionsList'
 
@@ -97,7 +103,6 @@ export function AISidebar() {
   const showList = useChatList((s) => s.showList)
   const [useFile, setUseFile] = useState(true)
   const [filePaths, setFilePaths] = useState<string[]>([])
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   // Controller for the reply in progress; Stop calls abort() on it
   const abortRef = useRef<AbortController | null>(null)
 
@@ -111,10 +116,6 @@ export function AISidebar() {
       setModel(GROQ_MODELS[0].id)
     }
   }, [selectedModel, setModel])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   // Refresh the file list for the @ menu when the project or the chat changes (the agent may have created files)
   useEffect(() => {
@@ -183,6 +184,7 @@ export function AISidebar() {
     } finally {
       abortRef.current = null
       setGenerating(false)
+      attachReviewToLastReply()
       void persistCurrentChat()
     }
   }
@@ -192,149 +194,162 @@ export function AISidebar() {
     cancelAllDecisions()
   }
 
-  return (
-    <div className="h-full flex flex-col bg-[#0d1117]">
-      <ChatHeader />
-      {showList && <SessionsList />}
-      {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-3 space-y-6${showList ? ' hidden' : ''}`}>
-        {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-[#8b949e]">
-            <Sparkles size={28} className="text-[#e6edf3] opacity-70" />
-            <p className="text-xs max-w-[220px]">
-              Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install
-              needed.
-            </p>
-            {selectedModel.startsWith('groq/') && (
-              <p className="text-[11px] max-w-[240px] text-[#8b949e]">
-                Groq models are run by Groq. Your messages and any @-mentioned files are sent to Groq to generate
-                replies.
-              </p>
-            )}
-          </div>
-        )}
-
-        {messages.map((msg, i) => {
-          if (msg.role === 'user') {
-            return (
-              <div
-                key={msg.id}
-                className="rounded-md border border-[#30363d] bg-[#1c2128] px-3 py-3 text-sm text-[#e6edf3] whitespace-pre-wrap leading-7"
-              >
-                {(msg.attachments?.length || msg.tools?.length) ? (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {msg.attachments?.map((p) => (
-                      <span key={'a-' + p} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a2f38] text-xs text-[#d4d4d4]">
-                        <File size={11} className="text-[#8b949e]" />
-                        {p.split('/').pop()}
-                      </span>
-                    ))}
-                    {msg.tools?.map((t) => (
-                      <span key={'t-' + t} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a2f38] text-[11px] text-[#c9d1d9]">
-                        <Wrench size={11} className="text-[#8b949e]" />
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {msg.fileName && (
-                  <span className="mb-2 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-[#30363d]/60 text-xs text-[#c9d1d9]">
-                    <File size={11} className="text-[#8b949e]" />
-                    {msg.fileName}
-                    <span className="text-[#8b949e]">Current File</span>
-                  </span>
-                )}
-                <div>{msg.content}</div>
-              </div>
-            )
-          }
-          const pending = isGenerating && i === messages.length - 1
-          const blocks: Block[] = msg.blocks?.length
-            ? msg.blocks
-            : msg.content
-              ? [{ type: 'text', text: msg.content }]
-              : []
-          if (blocks.length === 0) {
-            return pending ? <Loader2 key={msg.id} size={14} className="animate-spin text-[#8b949e]" /> : null
-          }
-          return (
-            <div key={msg.id} className="space-y-3 text-sm text-[#e6edf3]">
-              {groupBlocks(blocks).map((seg, j) =>
-                seg.type === 'text' ? (
-                  seg.text.trim() ? (
-                    <div key={j}><MessageContent text={seg.text.trim()} streaming={pending} /></div>
-                  ) : null
-                ) : (
-                  <StepsGroup key={seg.id} blocks={seg.blocks} />
-                )
-              )}
-              {pending && <Loader2 size={12} className="animate-spin text-[#8b949e]" />}
+  // One message: a user bubble, or an assistant reply with its steps, text, and review
+  const renderMessage = (msg: ChatMessage, i: number) => {
+    if (msg.role === 'user') {
+      return (
+        <div className="rounded-md border border-[#2d2921] bg-[#2a2620] px-3 py-3 text-sm text-[#ece6da] whitespace-pre-wrap leading-7">
+          {(msg.attachments?.length || msg.tools?.length) ? (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {msg.attachments?.map((p) => (
+                <span key={'a-' + p} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a261f] text-xs text-[#d4d4d4]">
+                  <File size={11} className="text-[#938a7c]" />
+                  {p.split('/').pop()}
+                </span>
+              ))}
+              {msg.tools?.map((t) => (
+                <span key={'t-' + t} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#2a261f] text-[11px] text-[#d9d2c4]">
+                  <Wrench size={11} className="text-[#938a7c]" />
+                  {t}
+                </span>
+              ))}
             </div>
+          ) : null}
+          {msg.fileName && (
+            <span className="mb-2 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-[#2d2921]/60 text-xs text-[#d9d2c4]">
+              <File size={11} className="text-[#938a7c]" />
+              {msg.fileName}
+              <span className="text-[#938a7c]">Current File</span>
+            </span>
+          )}
+          <div>{msg.content}</div>
+        </div>
+      )
+    }
+    const pending = isGenerating && i === messages.length - 1
+    const blocks: Block[] = msg.blocks?.length
+      ? msg.blocks
+      : msg.content
+        ? [{ type: 'text', text: msg.content }]
+        : []
+    if (blocks.length === 0) {
+      return pending ? <Loader2 size={14} className="animate-spin text-[#938a7c]" /> : null
+    }
+    return (
+      <div className="space-y-3 text-sm text-[#ece6da]">
+        {groupBlocks(blocks.filter((b) => !(b.type === 'tool' && b.name === 'set_todos'))).map((seg, j) =>
+          seg.type === 'text' ? (
+            seg.text.trim() ? (
+              <div key={j}><MessageContent text={seg.text.trim()} streaming={pending} /></div>
+            ) : null
+          ) : (
+            <StepsGroup key={seg.id} blocks={seg.blocks} />
           )
-        })}
-        <div ref={messagesEndRef} />
+        )}
+        <ReplyParts msg={msg} blocks={blocks} />
+        {pending && <Loader2 size={12} className="animate-spin text-[#938a7c]" />}
       </div>
+    )
+  }
 
-      {/* Stop bar, shown while a reply is being written */}
-      {isGenerating && (
-        <div className="px-3 py-1.5 border-t border-[#30363d] flex items-center justify-between text-xs text-[#8b949e] shrink-0">
-          <span className="flex items-center gap-1.5">
-            <Loader2 size={12} className="animate-spin" /> Working...
-          </span>
-          <button
-            type="button"
-            onClick={stopGenerating}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d]"
-          >
-            <Square size={11} /> Stop
-          </button>
+  // The messages, or the empty state with the past chats when there are none
+  const renderList = (bottomPad: number) => {
+    if (messages.length === 0) {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3 text-[#938a7c] p-3">
+          <Sparkles size={28} className="text-[#ece6da] opacity-70" />
+          <p className="text-xs max-w-[220px]">
+            Ask a question, plan a change, or debug an error. Browser models run on this computer, with no install
+            needed.
+          </p>
+          {selectedModel.startsWith('groq/') && (
+            <p className="text-[11px] max-w-[240px] text-[#938a7c]">
+              Groq models are run by Groq. Your messages and any @-mentioned files are sent to Groq to generate
+              replies.
+            </p>
+          )}
+          <div className="absolute left-3 right-3" style={{ bottom: bottomPad }}>
+            <PastChats />
+          </div>
         </div>
-      )}
+      )
+    }
+    return <MessageList items={messages} bottomPad={bottomPad} renderItem={renderMessage} />
+  }
 
-      {/* Input */}
-      {/* Pending changes, just above the input, like Cursor */}
-      {pendingDiffs.length > 0 && (
-        <div className="px-3 pt-2 pb-1 flex items-center justify-between gap-2 text-xs shrink-0">
-          <span className="flex items-center gap-1.5 text-[#c9d1d9]">
-            <ChevronDown size={12} className="text-[#8b949e]" />
-            {pendingDiffs.length} file{pendingDiffs.length > 1 ? 's' : ''}
-            <span className="text-[#3fb950]">+{diffTotals(pendingDiffs).plus}</span>
-            <span className="text-[#f85149]">-{diffTotals(pendingDiffs).minus}</span>
-          </span>
-          <span className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => pendingDiffs.forEach((d) => declinePending(d.path))}
-              className="text-[#8b949e] hover:text-[#e6e6e6]"
-            >
-              Undo All
-            </button>
-            <button
-              type="button"
-              onClick={() => pendingDiffs.forEach((d) => void applyPending(d.path))}
-              className="px-2 py-0.5 rounded bg-[#2b3a55] text-[#e6e6e6] hover:bg-[#34486b]"
-            >
-              Keep All
-            </button>
-          </span>
-        </div>
-      )}
+  return (
+    <div className="h-full flex flex-col bg-[#1a1814]">
+      <ChatHeader />
+      <ChatTabs />
+      {showList && <SessionsList />}
 
-      <ChatInput
-        value={input}
-        onChange={setInput}
-        onSend={handleSend}
-        disabled={isGenerating}
-        mode={projectId ? mode : 'ask'}
-        askOnly={!projectId}
-        onModeChange={setMode}
+      <ChatBody
+        hidden={showList}
         style={chatStyle}
-        fileName={activeFile?.name ?? null}
-        useFile={useFile}
-        onToggleFile={() => setUseFile((v) => !v)}
-        selectedModel={selectedModel}
-        onModelChange={setModel}
-        filePaths={filePaths}
+        list={renderList}
+        footer={
+          <>
+            {/* Stop bar, shown while a reply is being written */}
+            {isGenerating && (
+              <div className="mb-1.5 flex items-center justify-between text-xs text-[#938a7c]">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 size={12} className="animate-spin" /> Working...
+                </span>
+                <button
+                  type="button"
+                  onClick={stopGenerating}
+                  className="flex items-center gap-1 px-2 py-1 rounded border border-[#2d2921] bg-[#2a261f] text-[#ece6da] hover:bg-[#2d2921]"
+                >
+                  <Square size={11} /> Stop
+                </button>
+              </div>
+            )}
+
+            {/* Pending changes, just above the input, like Cursor */}
+            {pendingDiffs.length > 0 && (
+              <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-1.5 text-[#d9d2c4]">
+                  <ChevronDown size={12} className="text-[#938a7c]" />
+                  {pendingDiffs.length} file{pendingDiffs.length > 1 ? 's' : ''}
+                  <span className="text-[#3fb950]">+{diffTotals(pendingDiffs).plus}</span>
+                  <span className="text-[#f85149]">-{diffTotals(pendingDiffs).minus}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => pendingDiffs.forEach((d) => declinePending(d.path))}
+                    className="text-[#938a7c] hover:text-[#f0a93b]"
+                  >
+                    Undo All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pendingDiffs.forEach((d) => void applyPending(d.path))}
+                    className="px-2 py-0.5 rounded bg-[#3a2f1f] text-[#f0a93b] hover:bg-[#4a3c27]"
+                  >
+                    Keep All
+                  </button>
+                </span>
+              </div>
+            )}
+
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSend={handleSend}
+              disabled={isGenerating}
+              mode={projectId ? mode : 'ask'}
+              askOnly={!projectId}
+              onModeChange={setMode}
+              fileName={activeFile?.name ?? null}
+              useFile={useFile}
+              onToggleFile={() => setUseFile((v) => !v)}
+              selectedModel={selectedModel}
+              onModelChange={setModel}
+              filePaths={filePaths}
+            />
+          </>
+        }
       />
     </div>
   )

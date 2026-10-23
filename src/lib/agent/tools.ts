@@ -177,6 +177,28 @@ export async function executeTool(
       if (outcome === 'declined') return `The user declined the change to ${path}.`
       return `The change to ${path} was cancelled.`
     }
+    case 'set_todos': {
+      const list: unknown[] = Array.isArray(args.todos) ? args.todos : []
+      const todos = list
+        .map((t) => {
+          const item = (t ?? {}) as { text?: unknown; done?: unknown; status?: unknown }
+          return {
+            text: String(item.text ?? '').trim().slice(0, 200),
+            done: item.done === true || item.status === 'done',
+          }
+        })
+        .filter((t) => t.text)
+      const st = useAppStore.getState()
+      let idx = -1
+      for (let i = st.messages.length - 1; i >= 0; i--) {
+        if (st.messages[i].role === 'assistant') {
+          idx = i
+          break
+        }
+      }
+      if (idx >= 0) useAppStore.setState({ messages: st.messages.map((m, i) => (i === idx ? { ...m, todos } : m)) })
+      return `To-do list updated (${todos.length} items).`
+    }
     case 'create_workspace': {
       if (projectId) throw new Error('A workspace is already open.')
       const name = String(args.name ?? '').trim() || 'New workspace'

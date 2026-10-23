@@ -38,17 +38,17 @@ export function ModePicker({ value, onChange, placement = 'up', askOnly = false 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-[#e6edf3] hover:bg-[#21262d]"
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-[#ece6da] hover:bg-[#2a261f]"
       >
         <Icon size={12} />
         <span>{current.label}</span>
-        <ChevronDown size={11} className="text-[#8b949e]" />
+        <ChevronDown size={11} className="text-[#938a7c]" />
       </button>
 
       {open && (
         <div
           className={cn(
-            'absolute left-0 w-44 z-50 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl py-1',
+            'absolute left-0 w-44 z-50 bg-[#15130f] border border-[#2d2921] rounded-lg shadow-xl py-1',
             placement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
           )}
         >
@@ -63,12 +63,12 @@ export function ModePicker({ value, onChange, placement = 'up', askOnly = false 
                   onChange(m.id)
                   setOpen(false)
                 }}
-                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#e6edf3] hover:bg-[#21262d] ${askOnly && m.id !== 'ask' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#ece6da] hover:bg-[#2a261f] ${askOnly && m.id !== 'ask' ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <MIcon size={12} />
                 <span className="flex-1 text-left">{m.label}</span>
-                {m.id === 'agent' && <span className="text-[10px] text-[#6e7681]">Ctrl+I</span>}
-                {m.id === value && <Check size={12} className="text-[#3fb950]" />}
+                {m.id === 'agent' && <span className="text-[10px] text-[#6f675a]">Ctrl+I</span>}
+                {m.id === value && <Check size={12} className="text-[#f0a93b]" />}
               </button>
             )
           })}
