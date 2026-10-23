@@ -1,0 +1,105 @@
+name: Issue
+description: Report a bug/issue with Spectrum
+labels: Bug, Needs review
+body:
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        Example:
+          1. First step
+          2. Second step
+          3. Issue here
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Explain what should happen.
+      placeholder: |
+        Example:
+          "X should happen…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Explain what actually happens.
+      placeholder: |
+        Example:
+          "X happened instead…"
+    validations:
+      required: true
+
+  - type: input
+    id: model-provider
+    attributes:
+      label: Model / Provider used
+      description: Which model and provider were you using when the issue occurred?
+      placeholder: |
+        Examples: "Llama 3.2 3B (Browser)", "Gemma 4 E4B (Ollama)", "GPT-OSS 120B (Groq)", "OpenRouter free model"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Spectrum version
+      description: Current public beta is v0.1. If using the live demo, note that. If using a local build or Electron, include the version or commit if known.
+      placeholder: |
+        Examples: "v0.1", "Live demo", "main branch", "Electron build"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where are you running Spectrum?
+      options:
+        - Browser (live demo)
+        - Browser (local)
+        - Electron (desktop)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: browser-os
+    attributes:
+      label: Browser / OS / Device
+      description: Browser name + version, operating system, and device if relevant.
+      placeholder: |
+        Examples: "Chrome 131 on Windows 11", "Safari on macOS", "Firefox on Android"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      placeholder: |
+        Additional details, screenshots, console errors, or model download issues.
+        If it's a model-related problem, note whether the model was already cached.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Your issue will be closed if you don’t read this carefully.
+      options:
+        - label: I have searched the [existing issues](https://github.com/pigeonthroat-hash/Spectrum/issues) and this is a new ticket, **NOT** a duplicate or related to another open OR closed issue.
+          required: true
+        - label: I have checked the [README](https://github.com/pigeonthroat-hash/Spectrum) and [Roadmap](https://github.com/pigeonthroat-hash/Spectrum#roadmap) to confirm this is not a known limitation or planned feature.
+          required: true
+        - label: I am using the latest available version (live demo or latest release) and can still reproduce the issue.
+          required: true
+        - label: I wrote my report in English, and any screenshots I attached are also in English where possible. I can add my native language below the English text if needed.
+          required: true
+        - label: I understand that this project is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY, so I may not get a positive reply, if any at all.
+          required: true
