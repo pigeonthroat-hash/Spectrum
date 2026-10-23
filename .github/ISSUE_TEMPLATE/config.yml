@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Idea
-    url: https://github.com/pigeonthroat-hash/Spectrum/issues/new?template=idea.yml
-    about: Suggest something to improve Spectrum (free & local-first AI code editor)
+  url: https://github.com/pigeonthroat-hash/Spectrum/discussions/new?category=ideas
+  about: Suggest something to improve Spectrum
   - name: Questions
     url: https://github.com/pigeonthroat-hash/Spectrum/discussions
     about: Ask the community for help or discuss the project
