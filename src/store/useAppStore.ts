@@ -33,6 +33,7 @@ export interface ChatMessage {
   fileName?: string // the open file when the message was sent (shown as a chip)
   attachments?: string[] // files picked with the @ menu when the message was sent
   tools?: string[] // tools that were turned on when the message was sent
+  checkpoint?: boolean // a workspace snapshot exists for this message
   todos?: { text: string; done: boolean }[] // the agent's to-do list for this reply
   review?: { path: string; added: number; removed: number }[] // files this reply changed
 }
@@ -58,8 +59,8 @@ interface AppState {
   pendingDiffs: DiffHunk[]
 
   // Panels: sizes and visibility
-  sidebarWidth: number
-  explorerWidth: number
+  editorRatio: number // the editor's share of the window width
+  explorerRatio: number // the sidebar's share of the window width
   showExplorer: boolean
   showAI: boolean
   chatStyle: ChatStyle
@@ -105,8 +106,8 @@ interface AppState {
   rejectAllDiffs: () => void
 
   // Actions: panels
-  setSidebarWidth: (w: number) => void
-  setExplorerWidth: (w: number) => void
+  setEditorRatio: (r: number) => void
+  setExplorerRatio: (r: number) => void
   toggleExplorer: () => void
   toggleAI: () => void
   hidePanel: (id: PanelId) => void
@@ -140,8 +141,8 @@ export const useAppStore = create<AppState>()(
       lastAccepted: null,
       redoItem: null,
 
-      sidebarWidth: 380,
-      explorerWidth: 260,
+      editorRatio: 830 / 1920, // the editor, on the right
+      explorerRatio: 350 / 1920, // the sidebar, on the left
       showExplorer: true,
       showAI: true,
       chatStyle: 'classic',
@@ -281,8 +282,8 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      setSidebarWidth: (w) => set({ sidebarWidth: w }),
-      setExplorerWidth: (w) => set({ explorerWidth: w }),
+      setEditorRatio: (r) => set({ editorRatio: r }),
+      setExplorerRatio: (r) => set({ explorerRatio: r }),
 
       toggleExplorer: () => {
         if (get().showExplorer) get().hidePanel('explorer')
@@ -350,12 +351,21 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'spectrum-settings',
+      // Version 5: panel sizes are no longer saved, so every visit starts at the defaults.
+      // Older saved sizes are cleared once.
+      version: 5,
+      migrate: (persisted, version) => {
+        const saved = (persisted ?? {}) as Record<string, unknown>
+        if (version < 5) {
+          delete saved.sidebarWidth
+          delete saved.explorerWidth
+        }
+        return saved as never
+      },
       // Only these survive a reload
       partialize: (s) => ({
         chatStyle: s.chatStyle,
         selectedModel: s.selectedModel,
-        sidebarWidth: s.sidebarWidth,
-        explorerWidth: s.explorerWidth,
         showExplorer: s.showExplorer,
         showAI: s.showAI,
         leftPanel: s.leftPanel,

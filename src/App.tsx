@@ -7,7 +7,6 @@ import { SaveController } from './components/SaveController'
 import { Workspace } from './components/Workspace'
 import { DragGhost } from './components/DragGhost'
 import { GlassSurface } from './components/GlassSurface'
-import { ActivityBar } from './components/ActivityBar'
 import { StatusBar } from './components/StatusBar'
 import { Toasts } from './components/Toasts'
 import { QuickOpen } from './components/QuickOpen'
@@ -53,6 +52,13 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [showExplorer, showAI, toggleExplorer, toggleAI])
+
+  // The sidebar's Customize button opens Settings
+  useEffect(() => {
+    const open = () => setShowSettings(true)
+    window.addEventListener('spectrum:open-settings', open)
+    return () => window.removeEventListener('spectrum:open-settings', open)
+  }, [])
 
   const toggleClass = (on: boolean) =>
     `p-1.5 rounded hover:bg-[#2a261f] hover:text-white ${on ? 'text-white bg-[#2a261f]' : 'text-[#938a7c]'}`
@@ -125,7 +131,6 @@ export default function App() {
       </header>
 
       <div className="flex flex-1 min-h-0 min-w-0">
-        <ActivityBar />
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <div className="flex-1 flex min-h-0 min-w-0">
             <Workspace />

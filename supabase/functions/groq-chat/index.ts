@@ -80,6 +80,9 @@ Deno.serve(async (req) => {
     headers: {
       ...corsHeaders(origin),
       'Content-Type': groq.headers.get('Content-Type') ?? 'application/json',
+      'X-Requests-Remaining': String(Math.max(0, limit - Number(count))),
+      'X-Requests-Limit': String(limit),
+      'Access-Control-Expose-Headers': 'X-Requests-Remaining, X-Requests-Limit',
     },
   })
 })

@@ -5,7 +5,7 @@ import { useAttachments } from '../lib/chat/attachments'
 import { isBinaryName } from '../lib/files/kinds'
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore, type ChatMessage } from '../store/useAppStore'
-import { Loader2, Sparkles, File, Square } from 'lucide-react'
+import { Loader2, Sparkles, File, Square, RotateCcw } from 'lucide-react'
 import { ChatInput } from './ChatInput'
 import { ChatBody } from './ChatBody'
 import { MessageList } from './MessageList'
@@ -22,11 +22,12 @@ import { LOCAL_MODELS, GROQ_MODELS } from '../lib/models'
 import { ChatHeader } from './ChatHeader'
 import { StepsGroup, groupBlocks } from './StepsGroup'
 import { PastChats } from './PastChats'
-import { ChatTabs } from './ChatTabs'
 import { ReplyParts } from './ReplyParts'
 import { attachReviewToLastReply } from '../lib/chats/replyMeta'
 import { persistCurrentChat, ageChats, refreshChatList, useChatList } from '../lib/chats/chatStore'
 import { SessionsList } from './SessionsList'
+import { UsageMeter } from './UsageMeter'
+import { takeCheckpoint, restoreCheckpoint } from '../lib/checkpoints/checkpoints'
 
 // Only the last few messages are sent to the model, to keep requests small
 const HISTORY_TURNS = 6
@@ -102,6 +103,8 @@ export function AISidebar() {
   const [input, setInput] = useState('')
   const showList = useChatList((s) => s.showList)
   const [useFile, setUseFile] = useState(true)
+  // Restore progress, 0-100, or null when no restore is running
+  const [restoreProgress, setRestoreProgress] = useState<number | null>(null)
   const [filePaths, setFilePaths] = useState<string[]>([])
   // Controller for the reply in progress; Stop calls abort() on it
   const abortRef = useRef<AbortController | null>(null)
@@ -145,13 +148,24 @@ export function AISidebar() {
       content: m.role === 'user' ? m.content : plainText(m.blocks) || m.content,
     })).filter((t) => t.content)
 
-    addMessage({
+    const userId = addMessage({
       role: 'user',
       content: text,
       fileName: useFile && activeFile ? activeFile.name : undefined,
       attachments: attachedPaths,
       tools: useToolToggles.getState().enabled,
     })
+    // Snapshot the workspace before this message runs, so it can be restored
+    if (projectId) {
+      try {
+        await takeCheckpoint(projectId, userId)
+        useAppStore.setState((st) => ({
+          messages: st.messages.map((m) => (m.id === userId ? { ...m, checkpoint: true } : m)),
+        }))
+      } catch (err) {
+        console.warn('Checkpoint not saved', err)
+      }
+    }
     const assistantId = addMessage({ role: 'assistant', content: '', blocks: [] })
     setGenerating(true)
 
@@ -189,6 +203,42 @@ export function AISidebar() {
     }
   }
 
+  // Puts the files back to how they were before this message, and removes the later messages.
+  // Every early exit says why, so a click that does nothing is never silent.
+  const restoreTo = async (userId: string) => {
+    console.info('[restore] clicked', { userId, projectId, isGenerating })
+    if (isGenerating) {
+      window.alert('Wait for the reply to finish before restoring.')
+      return
+    }
+    if (!projectId) {
+      window.alert('Open a workspace to restore a checkpoint.')
+      return
+    }
+    const all = useAppStore.getState().messages
+    const idx = all.findIndex((m) => m.id === userId)
+    if (idx < 0) {
+      window.alert('That message is no longer in this chat.')
+      return
+    }
+    if (!window.confirm("Restore this checkpoint? Files go back to how they were before this message, and later messages are removed. This can't be undone.")) {
+      console.info('[restore] cancelled')
+      return
+    }
+    try {
+      setRestoreProgress(0)
+      await restoreCheckpoint(projectId, userId, (pct) => setRestoreProgress(pct))
+      useAppStore.setState({ messages: all.slice(0, idx), pendingDiffs: [] })
+      void persistCurrentChat()
+      console.info('[restore] done')
+    } catch (err) {
+      console.error('[restore] failed', err)
+      window.alert(`Could not restore: ${errorText(err)}`)
+    } finally {
+      setRestoreProgress(null)
+    }
+  }
+
   const stopGenerating = () => {
     abortRef.current?.abort()
     cancelAllDecisions()
@@ -198,7 +248,7 @@ export function AISidebar() {
   const renderMessage = (msg: ChatMessage, i: number) => {
     if (msg.role === 'user') {
       return (
-        <div className="rounded-md border border-[#2d2921] bg-[#2a2620] px-3 py-3 text-sm text-[#ece6da] whitespace-pre-wrap leading-7">
+        <div className="group rounded-md border border-[#2d2921] bg-[#2a2620] px-3 py-3 text-sm text-[#ece6da] whitespace-pre-wrap leading-7">
           {(msg.attachments?.length || msg.tools?.length) ? (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {msg.attachments?.map((p) => (
@@ -223,6 +273,15 @@ export function AISidebar() {
             </span>
           )}
           <div>{msg.content}</div>
+          {msg.checkpoint && !isGenerating && (
+            <button
+              type="button"
+              onClick={() => void restoreTo(msg.id)}
+              className="mt-2 flex items-center gap-1 text-[11px] text-[#938a7c] opacity-0 group-hover:opacity-100 hover:text-[#f0a93b]"
+            >
+              <RotateCcw size={11} /> Restore checkpoint
+            </button>
+          )}
         </div>
       )
     }
@@ -278,9 +337,19 @@ export function AISidebar() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1814]">
+    <div className="relative h-full flex flex-col bg-[#1a1814]">
+      {restoreProgress !== null && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 w-56 rounded-md border border-[#2d2921] bg-[#15130f] px-3 py-2 shadow-xl text-xs text-[#ece6da]">
+          <div className="mb-1.5 flex justify-between">
+            <span>Restoring…</span>
+            <span className="tabular-nums">{restoreProgress}%</span>
+          </div>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-[#2d2921]">
+            <div className="h-full bg-[#f0a93b] transition-[width] duration-150" style={{ width: `${restoreProgress}%` }} />
+          </div>
+        </div>
+      )}
       <ChatHeader />
-      <ChatTabs />
       {showList && <SessionsList />}
 
       <ChatBody
@@ -330,6 +399,12 @@ export function AISidebar() {
                     Keep All
                   </button>
                 </span>
+              </div>
+            )}
+
+            {selectedModel.startsWith('groq/') && (
+              <div className="mb-1 flex justify-end">
+                <UsageMeter />
               </div>
             )}
 
